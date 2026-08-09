@@ -39,10 +39,13 @@ public class FileCacheService
         var durationMinutes = config.GetValue<int>("FileCache:DefaultDurationMinutes", 10);
         _defaultDuration = TimeSpan.FromMinutes(durationMinutes);
 
-        _mp3Root = config["Music:Mp3Root"] ?? string.Empty;
-        _sidRoot = config["Music:SidRoot"] ?? string.Empty;
+        _mp3Root = ResolvePath(config["Music:Mp3Root"] ?? string.Empty);
+        _sidRoot = ResolvePath(config["Music:SidRoot"] ?? string.Empty);
         _mp3UrlPrefix = config["Music:Mp3UrlPrefix"] ?? "/Music/Mp3";
         _sidUrlPrefix = config["Music:SidUrlPrefix"] ?? "/Music/Sid";
+
+        _logger.LogInformation("FileCache initialized: MP3 root={Mp3Root}, SID root={SidRoot}, cache duration={Duration}min",
+            _mp3Root, _sidRoot, _defaultDuration.TotalMinutes);
     }
 
     public string GetRootPath(string fileType)
@@ -78,25 +81,31 @@ public class FileCacheService
             throw new InvalidOperationException($"No root path configured for file type '{fileType}'");
         }
 
-        // Normalize the relative path
         var normalizedRelative = relativePath.TrimStart('/').Replace('\\', '/');
         var fullPath = Path.Combine(rootPath, normalizedRelative.Replace('/', Path.DirectorySeparatorChar));
 
+        _logger.LogDebug("BrowseAsync: type={FileType}, relativePath={RelativePath}, resolved={FullPath}",
+            fileType, relativePath, fullPath);
+
         if (!Directory.Exists(fullPath))
         {
+            _logger.LogWarning("Directory does not exist: {FullPath}", fullPath);
             return new DirectoryListing { CurrentPath = relativePath };
         }
 
         var cacheKey = CacheKey(fullPath, fileType);
         if (_cache.TryGetValue(cacheKey, out DirectoryListing? cached) && cached is not null)
         {
+            _logger.LogDebug("Cache hit for {FullPath}", fullPath);
             return cached;
         }
 
+        _logger.LogDebug("Cache miss for {FullPath}, scanning directory", fullPath);
         var listing = await ScanDirectoryAsync(fullPath, normalizedRelative, fileType);
         _cache.Set(cacheKey, listing, _defaultDuration);
 
-        _logger.LogDebug("Cached directory listing for {Path} (expires in {Duration})", relativePath, _defaultDuration);
+        _logger.LogInformation("Cached directory listing for {Path}: {DirCount} dirs, {FileCount} files (expires in {Duration})",
+            relativePath, listing.Directories.Count, listing.Files.Count, _defaultDuration);
         return listing;
     }
 
@@ -174,5 +183,17 @@ public class FileCacheService
     {
         var segments = relativePath.Trim('/').Split('/');
         return segments.Length <= 1 ? "" : string.Join('/', segments.Take(segments.Length - 1));
+    }
+
+    private static string ResolvePath(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return path;
+
+        if (path == "~" || path.StartsWith("~/"))
+            path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
+
+        path = Environment.ExpandEnvironmentVariables(path);
+
+        return Path.GetFullPath(path);
     }
 }

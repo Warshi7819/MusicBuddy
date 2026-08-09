@@ -89,12 +89,14 @@ app.UseRateLimiter();
 app.MapRazorPages();
 
 var apiBase = builder.Configuration["Api:BaseUrl"] ?? "http://localhost:5277";
+var proxyLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("ApiProxy");
 
 app.Map("/api/{**path}", async (HttpContext context, string path) =>
 {
     var targetUrl = $"{apiBase}/api/{path}{context.Request.QueryString}";
+    proxyLogger.LogInformation("Proxy {Method} {Path} -> {TargetUrl}", context.Request.Method, context.Request.Path, targetUrl);
 
-    using var client = new HttpClient();
+    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
     var authCookie = context.Request.Cookies["MusicBuddyAuth"];
     if (!string.IsNullOrEmpty(authCookie))
         client.DefaultRequestHeaders.Add("Cookie", $"MusicBuddyAuth={authCookie}");
@@ -108,13 +110,23 @@ app.Map("/api/{**path}", async (HttpContext context, string path) =>
         upstream.Content = new StringContent(body, Encoding.UTF8, context.Request.ContentType ?? "application/json");
     }
 
-    var response = await client.SendAsync(upstream);
+    try
+    {
+        var response = await client.SendAsync(upstream);
+        proxyLogger.LogInformation("Proxy {Method} {Path} -> {StatusCode}", context.Request.Method, context.Request.Path, (int)response.StatusCode);
 
-    context.Response.StatusCode = (int)response.StatusCode;
-    if (response.Content.Headers.ContentType != null)
-        context.Response.ContentType = response.Content.Headers.ContentType.ToString();
+        context.Response.StatusCode = (int)response.StatusCode;
+        if (response.Content.Headers.ContentType != null)
+            context.Response.ContentType = response.Content.Headers.ContentType.ToString();
 
-    await response.Content.CopyToAsync(context.Response.Body);
+        await response.Content.CopyToAsync(context.Response.Body);
+    }
+    catch (Exception ex)
+    {
+        proxyLogger.LogError(ex, "Proxy error for {Method} {Path} -> {TargetUrl}", context.Request.Method, context.Request.Path, targetUrl);
+        context.Response.StatusCode = 502;
+        await context.Response.WriteAsJsonAsync(new { message = "API unavailable", detail = ex.Message });
+    }
 });
 
 app.Run();
