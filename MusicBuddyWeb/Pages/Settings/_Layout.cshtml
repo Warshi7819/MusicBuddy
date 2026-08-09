@@ -1,0 +1,34 @@
+@{
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var currentPage = ViewContext.RouteData.Values["page"]?.ToString();
+}
+
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link @(currentPage == "/Settings/Themes" ? "active" : "")"
+           asp-page="/Settings/Themes">
+            <i class="bi bi-palette"></i> Themes
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentPage == "/Settings/Profile" ? "active" : "")"
+           asp-page="/Settings/Profile">
+            <i class="bi bi-person"></i> Profile
+        </a>
+    </li>
+    @if (User.IsInRole("Admin"))
+    {
+        <li class="nav-item">
+            <a class="nav-link @(currentPage == "/Settings/Users" ? "active" : "")"
+               asp-page="/Settings/Users">
+                <i class="bi bi-people"></i> Users
+            </a>
+        </li>
+    }
+</ul>
+
+@RenderBody()
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

@@ -1,0 +1,60 @@
+@page
+@model MusicBuddyWeb.Pages.Settings.ProfileModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Profile";
+}
+
+<h2 class="mb-4"><i class="bi bi-person"></i> Profile</h2>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger py-2">@Model.ErrorMessage</div>
+}
+
+<div class="card mb-4" style="max-width: 480px;">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-person-badge"></i> Alias</h5>
+        <form method="post" asp-page-handler="UpdateAlias" class="row g-2 align-items-end">
+            <div class="col">
+                <label class="form-label">Display name</label>
+                <input type="text" name="Alias" class="form-control" maxlength="100"
+                       value="@Model.CurrentAlias" placeholder="Leave empty to show username">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="max-width: 480px;">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-key"></i> Change Password</h5>
+        <form method="post" class="row g-3">
+            <div class="col-12">
+                <label class="form-label">Current password</label>
+                <input type="password" name="CurrentPassword" class="form-control" required autocomplete="current-password">
+            </div>
+            <div class="col-12">
+                <label class="form-label">New password</label>
+                <input type="password" name="NewPassword" class="form-control" required autocomplete="new-password">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Confirm new password</label>
+                <input type="password" name="ConfirmPassword" class="form-control" required autocomplete="new-password">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-key"></i> Change password</button>
+            </div>
+        </form>
+    </div>
+</div>

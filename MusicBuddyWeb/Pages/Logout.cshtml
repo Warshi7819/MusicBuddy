@@ -1,0 +1,10 @@
+@page
+@model MusicBuddyWeb.Pages.LogoutModel
+@{
+    ViewData["Title"] = "Sign out";
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-primary">Click here to sign out</button>
+</form>

@@ -1,0 +1,105 @@
+@page
+@model MusicBuddyWeb.Pages.SidModel
+@{
+    ViewData["Title"] = "jsSID Player";
+}
+
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/Mp3"><i class="bi bi-file-earmark-music me-1"></i>MP3 Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" asp-page="/Sid"><i class="bi bi-cassette me-1"></i>jsSID Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/WebSid"><i class="bi bi-cassette me-1"></i>webSID Player</a>
+    </li>
+</ul>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-center mb-3">
+            <canvas id="vu-canvas"></canvas>
+        </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div id="sid-now-playing" class="mb-3">
+                    <h5 class="mb-1" id="sid-title">No track loaded</h5>
+                    <small class="text-muted" id="sid-author"></small>
+                    <div class="small text-muted mt-1" id="sid-info"></div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="text-muted small" id="sid-time">0:00</span>
+                    <div class="flex-grow-1">
+                        <div class="progress" style="height: 6px; cursor: pointer;" id="sid-seek-bar">
+                            <div class="progress-bar bg-primary" id="sid-seek-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <span class="text-muted small" id="sid-duration"></span>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="sid-prev" title="Previous track">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button class="btn btn-primary" id="sid-play" title="Play">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="sid-pause" title="Pause" style="display:none;">
+                        <i class="bi bi-pause-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="sid-stop" title="Stop">
+                        <i class="bi bi-stop-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="sid-next" title="Next track">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mt-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-volume-up text-muted"></i>
+                        <input type="range" class="form-range" id="sid-volume" min="0" max="100" value="80" style="width: 100px;">
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Subtune:</span>
+                        <button class="btn btn-outline-secondary btn-sm" id="sid-sub-down" disabled>-</button>
+                        <span id="sid-subtune" class="small">1/1</span>
+                        <button class="btn btn-outline-secondary btn-sm" id="sid-sub-up" disabled>+</button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Model:</span>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="sid-model" id="sid-model-6581" value="6581">
+                            <label class="btn btn-outline-secondary" for="sid-model-6581">6581</label>
+                            <input type="radio" class="btn-check" name="sid-model" id="sid-model-8580" value="8580" checked>
+                            <label class="btn btn-outline-secondary" for="sid-model-8580">8580</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-music-note-list me-1"></i>Playlist</span>
+                <span class="badge bg-secondary" id="sid-count">0</span>
+            </div>
+            <div class="list-group list-group-flush" id="sid-playlist" style="max-height: 500px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/vu-meter.js" asp-append-version="true"></script>
+    <script>vuMeter.init('vu-canvas');</script>
+    <script src="~/lib/jsSID.js"></script>
+    <script src="~/js/sid-player.js" asp-append-version="true"></script>
+    <script>
+        sidPlayer.init(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Files, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })));
+    </script>
+}

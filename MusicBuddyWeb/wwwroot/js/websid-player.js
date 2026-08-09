@@ -1,0 +1,220 @@
+var websidPlayer = (function () {
+    var playlist = [];
+    var currentIndex = -1;
+    var playing = false;
+    var initialized = false;
+    var player = null;
+    var updateInterval = null;
+
+    function formatTime(sec) {
+        var m = Math.floor(sec / 60);
+        var s = Math.floor(sec % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function renderPlaylist() {
+        var el = document.getElementById('websid-playlist');
+        if (!el) return;
+        el.innerHTML = '';
+        document.getElementById('websid-count').textContent = playlist.length;
+        playlist.forEach(function (f, i) {
+            var item = document.createElement('button');
+            item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
+            item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
+                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
+                '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
+                '</div>';
+            item.addEventListener('click', function () { loadTrack(i); });
+            el.appendChild(item);
+        });
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function updateSubtuneUI(info) {
+        if (!info) return;
+        var total = info.maxSubsong || 1;
+        var current = (info.actualSubsong || 0) + 1;
+        document.getElementById('websid-subtune').textContent = current + '/' + total;
+        document.getElementById('websid-sub-down').disabled = current <= 1;
+        document.getElementById('websid-sub-up').disabled = current >= total;
+    }
+
+    function showPlayState() {
+        document.getElementById('websid-play').style.display = 'none';
+        document.getElementById('websid-pause').style.display = '';
+        playing = true;
+    }
+
+    function showPauseState() {
+        document.getElementById('websid-play').style.display = '';
+        document.getElementById('websid-pause').style.display = 'none';
+        playing = false;
+    }
+
+    function initBackend() {
+        return new Promise(function (resolve) {
+            if (initialized) { resolve(); return; }
+
+            var backend = new SIDBackendAdapter();
+            ScriptNodePlayer.initialize(backend, function () {
+                var next = currentIndex + 1;
+                if (next >= playlist.length) next = 0;
+                loadTrack(next);
+            }, undefined, true).then(function () {
+                initialized = true;
+                player = ScriptNodePlayer.getInstance();
+                resolve();
+            });
+        });
+    }
+
+    function loadTrack(index) {
+        if (index < 0 || index >= playlist.length) return;
+        currentIndex = index;
+        var file = playlist[index];
+        document.getElementById('websid-title').textContent = file.name;
+        document.getElementById('websid-author').textContent = '';
+        document.getElementById('websid-info').textContent = 'Loading...';
+        document.getElementById('websid-time').textContent = '0:00';
+        document.getElementById('websid-duration').textContent = '';
+        document.getElementById('websid-seek-fill').style.width = '0%';
+        renderPlaylist();
+
+        var options = {};
+        options.track = -1;
+        options.timeout = -1;
+        options.traceSID = false;
+
+        function doLoad() {
+            ScriptNodePlayer.loadMusicFromURL(file.path, options,
+                function () { document.getElementById('websid-info').textContent = 'Error loading file'; },
+                function () {}
+            ).then(function () {
+                var info = player.getSongInfo();
+                document.getElementById('websid-title').textContent = info.songName || file.name;
+                document.getElementById('websid-author').textContent = info.songAuthor || '';
+                document.getElementById('websid-info').textContent = info.songReleased || '';
+                updateSubtuneUI(info);
+                showPlayState();
+            });
+        }
+
+        if (!initialized) {
+            initBackend().then(doLoad);
+        } else {
+            doLoad();
+        }
+    }
+
+    return {
+        init: function (files) {
+            playlist = files;
+            renderPlaylist();
+
+            document.getElementById('websid-play').addEventListener('click', function () {
+                if (currentIndex < 0 && playlist.length > 0) {
+                    loadTrack(0);
+                } else if (player) {
+                    player.resume();
+                    showPlayState();
+                } else {
+                    loadTrack(currentIndex >= 0 ? currentIndex : 0);
+                }
+            });
+
+            document.getElementById('websid-pause').addEventListener('click', function () {
+                if (player) { player.pause(); showPauseState(); }
+            });
+
+            document.getElementById('websid-stop').addEventListener('click', function () {
+                if (player) { player.pause(); showPauseState(); }
+            });
+
+            document.getElementById('websid-prev').addEventListener('click', function () {
+                var prev = currentIndex - 1;
+                if (prev < 0) prev = playlist.length - 1;
+                loadTrack(prev);
+            });
+
+            document.getElementById('websid-next').addEventListener('click', function () {
+                var next = currentIndex + 1;
+                if (next >= playlist.length) next = 0;
+                loadTrack(next);
+            });
+
+            document.getElementById('websid-volume').addEventListener('input', function () {
+                if (player) player.setVolume(this.value / 100);
+            });
+
+            document.getElementById('websid-sub-down').addEventListener('click', function () {
+                if (!player) return;
+                var info = player.getSongInfo();
+                if (!info) return;
+                var current = info.actualSubsong || 0;
+                if (current > 0) {
+                    ScriptNodePlayer.loadMusicFromURL(playlist[currentIndex].path,
+                        { track: current - 1, timeout: -1, traceSID: false },
+                        function () {},
+                        function () {}
+                    ).then(function () {
+                        var newInfo = player.getSongInfo();
+                        updateSubtuneUI(newInfo);
+                        showPlayState();
+                    });
+                }
+            });
+
+            document.getElementById('websid-sub-up').addEventListener('click', function () {
+                if (!player) return;
+                var info = player.getSongInfo();
+                if (!info) return;
+                var current = info.actualSubsong || 0;
+        var total = info.maxSubsong || 1;
+                if (current < total - 1) {
+                    ScriptNodePlayer.loadMusicFromURL(playlist[currentIndex].path,
+                        { track: current + 1, timeout: -1, traceSID: false },
+                        function () {},
+                        function () {}
+                    ).then(function () {
+                        var newInfo = player.getSongInfo();
+                        updateSubtuneUI(newInfo);
+                        showPlayState();
+                    });
+                }
+            });
+
+            document.getElementById('websid-volume').dispatchEvent(new Event('input'));
+
+            var rmsData = new Float32Array(1024);
+            function getRmsLevel() {
+                if (!player || !player._analyzerNode) return 0;
+                player._analyzerNode.getFloatTimeDomainData(rmsData);
+                var sum = 0;
+                for (var i = 0; i < rmsData.length; i++) sum += rmsData[i] * rmsData[i];
+                var rms = Math.sqrt(sum / rmsData.length);
+                return Math.min(1, rms);
+            }
+
+            updateInterval = setInterval(function () {
+                if (playing && player) {
+                    var time = player.getCurrentPlaytime();
+                    document.getElementById('websid-time').textContent = formatTime(time);
+                    vuMeter.setLevels(getRmsLevel(), getRmsLevel());
+                } else {
+                    vuMeter.setLevels(0, 0);
+                }
+            }, 50);
+        }
+    };
+})();

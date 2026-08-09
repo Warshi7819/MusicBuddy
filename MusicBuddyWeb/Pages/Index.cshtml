@@ -1,0 +1,23 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<ul class="nav nav-pills mb-4" id="playerTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link active" id="sid-tab" asp-page="/Sid" role="tab">
+            <i class="bi bi-cassette me-1"></i>SID Player
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="mp3-tab" asp-page="/Mp3" role="tab">
+            <i class="bi bi-file-earmark-music me-1"></i>MP3 Player
+        </a>
+    </li>
+</ul>
+
+<div class="text-center text-muted py-5">
+    <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
+    <p class="mt-2">Select a player from the tabs above.</p>
+</div>

@@ -1,0 +1,116 @@
+@page
+@model MusicBuddyWeb.Pages.Settings.UsersModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Users";
+}
+
+<h2 class="mb-4"><i class="bi bi-people"></i> Users</h2>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger py-2">@Model.ErrorMessage</div>
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-person-plus"></i> Create User</h5>
+        <form method="post" asp-page-handler="Create" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Username</label>
+                <input type="text" name="NewUsername" class="form-control" required maxlength="100" autocomplete="new-username">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Alias</label>
+                <input type="text" name="NewAlias" class="form-control" maxlength="100" placeholder="Optional">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Password</label>
+                <input type="password" name="NewPassword" class="form-control" required autocomplete="new-password">
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    <input type="checkbox" name="NewIsAdmin" value="true" class="form-check-input" id="newIsAdmin">
+                    <label class="form-check-label" for="newIsAdmin">Admin</label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Alias</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr>
+                    <td class="fw-medium">@user.Username</td>
+                    <td>
+                        <form method="post" asp-page-handler="SetAlias" asp-route-id="@user.Id" class="d-flex gap-1 align-items-center">
+                            <input type="text" name="Alias" value="@user.Alias" class="form-control form-control-sm" style="max-width:150px" placeholder="—">
+                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Save alias"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                    </td>
+                    <td>
+                        @if (user.IsAdmin)
+                        {
+                            <span class="badge bg-primary">Admin</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">User</span>
+                        }
+                    </td>
+                    <td>
+                        @if (user.IsDisabled)
+                        {
+                            <span class="badge bg-warning text-dark">Disabled</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                    </td>
+                    <td class="small text-muted">@user.CreatedAt.ToString("MMM dd, yyyy")</td>
+                    <td class="text-end">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <form method="post" asp-page-handler="ToggleAdmin" asp-route-id="@user.Id" style="display:inline">
+                                <button type="submit" class="btn btn-sm @(user.IsAdmin ? "btn-outline-warning" : "btn-outline-primary")"
+                                        title="@(user.IsAdmin ? "Revoke admin" : "Grant admin")">
+                                    <i class="bi bi-shield@(user.IsAdmin ? "-fill" : "")"></i>
+                                </button>
+                            </form>
+                            <form method="post" asp-page-handler="ToggleDisable" asp-route-id="@user.Id" style="display:inline">
+                                <button type="submit" class="btn btn-sm @(user.IsDisabled ? "btn-outline-success" : "btn-outline-warning")"
+                                        title="@(user.IsDisabled ? "Enable" : "Disable")"
+                                        @(Model.IsLastEnabledAdmin(user) ? "disabled" : "")>
+                                    <i class="bi bi-@(user.IsDisabled ? "play" : "pause")-circle"></i>
+                                </button>
+                            </form>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@user.Id" style="display:inline"
+                                  onsubmit="return confirm('Delete this user?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"
+                                        @(Model.IsLastEnabledAdmin(user) ? "disabled" : "")>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,88 @@
+@page
+@model MusicBuddyWeb.Pages.Mp3Model
+@{
+    ViewData["Title"] = "MP3 Player";
+}
+
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link active" asp-page="/Mp3"><i class="bi bi-file-earmark-music me-1"></i>MP3 Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/Sid"><i class="bi bi-cassette me-1"></i>jsSID Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/WebSid"><i class="bi bi-cassette me-1"></i>webSID Player</a>
+    </li>
+</ul>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-center mb-3">
+            <canvas id="vu-canvas"></canvas>
+        </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div id="mp3-now-playing" class="mb-3">
+                    <h5 class="mb-1" id="mp3-title">No track loaded</h5>
+                    <small class="text-muted" id="mp3-artist"></small>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="text-muted small" id="mp3-time">0:00</span>
+                    <div class="flex-grow-1">
+                        <div class="progress" style="height: 6px; cursor: pointer;" id="mp3-seek-bar">
+                            <div class="progress-bar bg-primary" id="mp3-seek-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <span class="text-muted small" id="mp3-duration">0:00</span>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="mp3-prev" title="Previous track">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button class="btn btn-primary" id="mp3-play" title="Play">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="mp3-pause" title="Pause" style="display:none;">
+                        <i class="bi bi-pause-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="mp3-stop" title="Stop">
+                        <i class="bi bi-stop-fill"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="mp3-next" title="Next track">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mt-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-volume-up text-muted"></i>
+                        <input type="range" class="form-range" id="mp3-volume" min="0" max="100" value="80" style="width: 100px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-music-note-list me-1"></i>Playlist</span>
+                <span class="badge bg-secondary" id="mp3-count">0</span>
+            </div>
+            <div class="list-group list-group-flush" id="mp3-playlist" style="max-height: 500px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/vu-meter.js" asp-append-version="true"></script>
+    <script>vuMeter.init('vu-canvas');</script>
+    <script src="~/js/mp3-player.js" asp-append-version="true"></script>
+    <script>
+        mp3Player.init(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Files, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })));
+    </script>
+}

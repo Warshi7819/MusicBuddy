@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MusicBuddyShared/MusicBuddyShared.csproj" />
+  <Project Path="MusicBuddyAPI/MusicBuddyAPI.csproj" />
+  <Project Path="MusicBuddyWeb/MusicBuddyWeb.csproj" />
+</Solution>

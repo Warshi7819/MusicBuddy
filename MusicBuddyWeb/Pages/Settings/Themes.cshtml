@@ -1,0 +1,168 @@
+@page
+@model MusicBuddyWeb.Pages.Settings.ThemesModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Themes";
+}
+
+<h2 class="mb-4"><i class="bi bi-palette"></i> Themes</h2>
+
+<div class="row">
+    @foreach (var theme in Model.Themes)
+    {
+        var isActive = Model.ActiveThemeId == theme.Id;
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 @(isActive ? "border-primary" : "")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">
+                            @if (isActive)
+                            {
+                                <i class="bi bi-check-circle-fill text-primary me-1"></i>
+                            }
+                            @theme.Name
+                            @if (theme.IsBuiltIn)
+                            {
+                                <span class="badge bg-secondary ms-1">Built-in</span>
+                            }
+                        </h5>
+                        <div class="btn-group btn-group-sm">
+                            <a asp-page="Themes" asp-route-copy="@theme.Id" class="btn btn-outline-secondary"
+                               title="Copy theme">
+                                <i class="bi bi-copy"></i>
+                            </a>
+                            @if (!theme.IsBuiltIn)
+                            {
+                                <a asp-page="Themes" asp-route-edit="@theme.Id" class="btn btn-outline-primary"
+                                   title="Edit theme">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@theme.Id"
+                                      onsubmit="return confirm('Delete this theme?')" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete theme">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mb-3">
+                        <span class="d-inline-block rounded" style="width:20px;height:20px;background:@theme.PrimaryColor"></span>
+                        <span class="d-inline-block rounded" style="width:20px;height:20px;background:@theme.BodyBg;border:1px solid #ccc"></span>
+                        <span class="d-inline-block rounded" style="width:20px;height:20px;background:@theme.CardBg;border:1px solid #ccc"></span>
+                        <span class="d-inline-block rounded" style="width:20px;height:20px;background:@theme.NavbarBg"></span>
+                    </div>
+                    <form method="post" asp-page-handler="Select" asp-route-id="@theme.Id">
+                        <button type="submit" class="btn @(isActive ? "btn-primary" : "btn-outline-primary") w-100"
+                        @(isActive ? "disabled" : "")>
+                            @if (isActive)
+                            {
+                                <text>Active</text>
+                            }
+                            else
+                            {
+                                <text>Apply</text>
+                            }
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<hr class="my-4">
+
+@{
+    var formTitle = "Create Custom Theme";
+    var formIcon = "bi-plus-circle";
+    var submitText = "Save Theme";
+    var submitIcon = "bi-save";
+    var handler = "Create";
+    var themeId = 0;
+
+    if (Model.IsEditing)
+    {
+        formTitle = "Edit Theme";
+        formIcon = "bi-pencil";
+        submitText = "Update Theme";
+        submitIcon = "bi-check-lg";
+        handler = "Update";
+        themeId = int.Parse(Request.Query["edit"]!);
+    }
+    else if (Model.IsCopying)
+    {
+        formTitle = "Copy Theme";
+        formIcon = "bi-copy";
+        submitText = "Save as New Theme";
+        submitIcon = "bi-save";
+        handler = "Create";
+        themeId = int.Parse(Request.Query["copy"]!);
+    }
+}
+
+<h4><i class="bi @formIcon"></i> @formTitle</h4>
+
+@if (Model.EditTheme is not null || (!Model.IsEditing && !Model.IsCopying))
+{
+    var src = Model.EditTheme ?? new MusicBuddyShared.Dtos.ThemeDto();
+
+    <form method="post" asp-page-handler="@handler">
+        @if (Model.IsEditing)
+        {
+            <input type="hidden" name="id" value="@themeId">
+        }
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Theme Name</label>
+                <input type="text" name="Name" class="form-control" required maxlength="100"
+                       placeholder="My Theme" value="@src.Name">
+            </div>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-3">
+                <label class="form-label">Page Background</label>
+                <input type="color" name="BodyBg" class="form-control form-control-color" value="@(src.BodyBg ?? "#ffffff")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Text Color</label>
+                <input type="color" name="BodyColor" class="form-control form-control-color" value="@(src.BodyColor ?? "#212529")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Card Background</label>
+                <input type="color" name="CardBg" class="form-control form-control-color" value="@(src.CardBg ?? "#ffffff")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Card Border</label>
+                <input type="color" name="CardBorderColor" class="form-control form-control-color" value="@(src.CardBorderColor ?? "#cccccc")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Primary Color</label>
+                <input type="color" name="PrimaryColor" class="form-control form-control-color" value="@(src.PrimaryColor ?? "#0d6efd")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Navbar Background</label>
+                <input type="color" name="NavbarBg" class="form-control form-control-color" value="@(src.NavbarBg ?? "#0d6efd")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Navbar Text</label>
+                <input type="color" name="NavbarTextColor" class="form-control form-control-color" value="@(src.NavbarTextColor ?? "#ffffff")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Footer Background</label>
+                <input type="color" name="FooterBg" class="form-control form-control-color" value="@(src.FooterBg ?? "#f8f9fa")">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Muted Text</label>
+                <input type="color" name="MutedColor" class="form-control form-control-color" value="@(src.MutedColor ?? "#6c757d")">
+            </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi @submitIcon"></i> @submitText</button>
+            @if (Model.IsEditing || Model.IsCopying)
+            {
+                <a asp-page="Themes" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> Cancel</a>
+            }
+        </div>
+    </form>
+}
