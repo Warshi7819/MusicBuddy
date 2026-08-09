@@ -239,7 +239,7 @@ var playlistManager = (function () {
                         fileType: currentFileType,
                         onConfirm: function (files) {
                             var tracks = files.map(function (f) {
-                                return { filePath: f.path, fileName: f.name, size: f.size };
+                                return { filePath: f.path, fileName: f.name, size: f.size, channelCount: f.channelCount || 2 };
                             });
                             apiFetch(apiBase + '/' + currentPlaylistId + '/tracks', {
                                 method: 'POST',

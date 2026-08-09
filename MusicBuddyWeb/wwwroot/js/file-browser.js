@@ -91,6 +91,7 @@ var fileBrowser = (function () {
                 checkbox.value = file.path;
                 checkbox.dataset.name = file.name;
                 checkbox.dataset.size = file.size;
+                checkbox.dataset.channelCount = file.channelCount;
 
                 var isChecked = selectedFiles.some(function (f) { return f.path === file.path; });
                 checkbox.checked = isChecked;
@@ -98,7 +99,7 @@ var fileBrowser = (function () {
                 checkbox.addEventListener('change', function () {
                     if (this.checked) {
                         if (!selectedFiles.some(function (f) { return f.path === file.path; })) {
-                            selectedFiles.push({ path: file.path, name: file.name, size: file.size });
+                            selectedFiles.push({ path: file.path, name: file.name, size: file.size, channelCount: file.channelCount });
                         }
                     } else {
                         selectedFiles = selectedFiles.filter(function (f) { return f.path !== file.path; });
@@ -213,7 +214,7 @@ var fileBrowser = (function () {
                 if (!cb.checked) {
                     cb.checked = true;
                     if (!selectedFiles.some(function (f) { return f.path === cb.value; })) {
-                        selectedFiles.push({ path: cb.value, name: cb.dataset.name, size: parseInt(cb.dataset.size) });
+                        selectedFiles.push({ path: cb.value, name: cb.dataset.name, size: parseInt(cb.dataset.size), channelCount: parseInt(cb.dataset.channelCount) || 2 });
                     }
                 }
             });

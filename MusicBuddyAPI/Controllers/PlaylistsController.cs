@@ -54,6 +54,7 @@ public class PlaylistsController : ControllerBase
                 FilePath = t.FilePath,
                 FileName = t.FileName,
                 FileSize = t.FileSize,
+                ChannelCount = t.ChannelCount,
                 SortOrder = t.SortOrder
             }).ToList()
         });
@@ -127,6 +128,7 @@ public class PlaylistsController : ControllerBase
             FilePath = t.FilePath,
             FileName = t.FileName,
             FileSize = t.Size,
+            ChannelCount = t.ChannelCount,
             SortOrder = maxOrder + i + 1
         }).ToList();
 
@@ -140,6 +142,7 @@ public class PlaylistsController : ControllerBase
             FilePath = t.FilePath,
             FileName = t.FileName,
             FileSize = t.FileSize,
+            ChannelCount = t.ChannelCount,
             SortOrder = t.SortOrder
         }).ToList());
     }
@@ -217,6 +220,7 @@ public class PlaylistTrackDto
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public long FileSize { get; set; }
+    public int ChannelCount { get; set; } = 2;
     public int SortOrder { get; set; }
 }
 
@@ -236,6 +240,7 @@ public class AddTrackRequest
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public long Size { get; set; }
+    public int ChannelCount { get; set; } = 2;
 }
 
 public class ReorderTrackRequest

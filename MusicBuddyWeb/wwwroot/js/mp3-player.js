@@ -4,9 +4,13 @@ var mp3Player = (function () {
     var currentIndex = -1;
     var playing = false;
     var audioCtx = null;
-    var analyser = null;
-    var rmsData = null;
+    var analyserL = null;
+    var analyserR = null;
+    var rmsDataL = null;
+    var rmsDataR = null;
     var vuInterval = null;
+    var source = null;
+    var currentTrack = null;
 
     function formatTime(sec) {
         if (isNaN(sec)) return '0:00';
@@ -24,7 +28,7 @@ var mp3Player = (function () {
             var item = document.createElement('button');
             item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
             item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
-                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
+                '<span class="text-truncate me-2">' + escapeHtml(f.name) + ' <small class="text-muted">(c=' + (f.channelCount || '?') + ')</small></span>' +
                 '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
                 '</div>';
             item.addEventListener('click', function () { loadTrack(i); });
@@ -48,23 +52,27 @@ var mp3Player = (function () {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
         var file = playlist[index];
+        currentTrack = file;
         document.getElementById('mp3-title').textContent = file.name;
         document.getElementById('mp3-artist').textContent = '';
         document.getElementById('mp3-time').textContent = '0:00';
         document.getElementById('mp3-duration').textContent = '0:00';
         document.getElementById('mp3-seek-fill').style.width = '0%';
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        audio.src = file.path;
-        audio.load();
-        audio.play().then(showPlayState).catch(function () {});
         renderPlaylist();
+        var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
+        p.then(function () {
+            audio.src = file.path;
+            audio.load();
+            audio.play().then(showPlayState).catch(function () {});
+        });
     }
 
     function normalizeTrack(track) {
         return {
             name: track.name || track.fileName || '',
             path: track.path || track.filePath || '',
-            size: track.size || track.fileSize || 0
+            size: track.size || track.fileSize || 0,
+            channelCount: track.channelCount || 2
         };
     }
 
@@ -103,23 +111,28 @@ var mp3Player = (function () {
 
             renderPlaylist();
 
-            function setupAudioGraph() {
-                if (audioCtx) return;
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                var source = audioCtx.createMediaElementSource(audio);
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 2048;
-                rmsData = new Float32Array(analyser.frequencyBinCount);
-                source.connect(analyser);
-                analyser.connect(audioCtx.destination);
-            }
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioCtx.createMediaElementSource(audio);
+            var splitter = audioCtx.createChannelSplitter(2);
+            analyserL = audioCtx.createAnalyser();
+            analyserR = audioCtx.createAnalyser();
+            analyserL.fftSize = 2048;
+            analyserR.fftSize = 2048;
+            rmsDataL = new Float32Array(analyserL.frequencyBinCount);
+            rmsDataR = new Float32Array(analyserR.frequencyBinCount);
+            source.connect(splitter);
+            splitter.connect(analyserL, 0);
+            splitter.connect(analyserR, 1);
+            source.connect(audioCtx.destination);
 
-            function getRmsLevel() {
-                if (!analyser) return 0;
-                analyser.getFloatTimeDomainData(rmsData);
+            function getRmsLevel(channel) {
+                var a = channel === 0 ? analyserL : analyserR;
+                var d = channel === 0 ? rmsDataL : rmsDataR;
+                if (!a) return 0;
+                a.getFloatTimeDomainData(d);
                 var sum = 0;
-                for (var i = 0; i < rmsData.length; i++) sum += rmsData[i] * rmsData[i];
-                var rms = Math.sqrt(sum / rmsData.length);
+                for (var i = 0; i < d.length; i++) sum += d[i] * d[i];
+                var rms = Math.sqrt(sum / d.length);
                 return Math.min(1, rms);
             }
 
@@ -127,22 +140,26 @@ var mp3Player = (function () {
                 if (vuInterval) return;
                 vuInterval = setInterval(function () {
                     if (playing) {
-                        vuMeter.setLevels(getRmsLevel(), getRmsLevel());
+                        var leftLevel = getRmsLevel(0);
+                        var mono = currentTrack && currentTrack.channelCount === 1;
+                        vuMeter.setLevels(leftLevel, mono ? leftLevel : getRmsLevel(1));
                     } else {
                         vuMeter.setLevels(0, 0);
                     }
                 }, 50);
             }
 
+            startVu();
+
             document.getElementById('mp3-play').addEventListener('click', function () {
-                setupAudioGraph();
-                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                startVu();
-                if (currentIndex < 0 && playlist.length > 0) {
-                    loadTrack(0);
-                } else {
-                    audio.play().catch(function () {});
-                }
+                var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
+                p.then(function () {
+                    if (currentIndex < 0 && playlist.length > 0) {
+                        loadTrack(0);
+                    } else {
+                        audio.play().then(showPlayState).catch(function () {});
+                    }
+                });
             });
             document.getElementById('mp3-pause').addEventListener('click', function () {
                 audio.pause();

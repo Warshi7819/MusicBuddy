@@ -8,6 +8,7 @@ public class FileEntry
     public string Path { get; set; } = string.Empty;
     public long Size { get; set; }
     public bool IsDirectory { get; set; }
+    public int ChannelCount { get; set; } = 2;
 }
 
 public class DirectoryListing
@@ -144,7 +145,9 @@ public class FileCacheService
 
             try
             {
-                foreach (var dir in Directory.GetDirectories(fullPath))
+                var dirs = Directory.GetDirectories(fullPath)
+                    .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase);
+                foreach (var dir in dirs)
                 {
                     var dirName = Path.GetFileName(dir);
                     listing.Directories.Add(new FileEntry
@@ -157,7 +160,10 @@ public class FileCacheService
                     });
                 }
 
-                foreach (var file in Directory.GetFiles(fullPath))
+                var searchPattern = fileType.ToLowerInvariant() == "mp3" ? "*.mp3" : "*.sid";
+                var files = Directory.GetFiles(fullPath, searchPattern)
+                    .OrderBy(f => Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase);
+                foreach (var file in files)
                 {
                     var fileName = Path.GetFileNameWithoutExtension(file);
                     var relativeFilePath = Path.GetRelativePath(fullPath, file).Replace('\\', '/');
@@ -166,7 +172,8 @@ public class FileCacheService
                         Name = fileName,
                         Path = urlPrefix + "/" + (string.IsNullOrEmpty(relativePath) ? relativeFilePath : relativePath.TrimEnd('/') + "/" + Path.GetFileName(file)),
                         Size = new FileInfo(file).Length,
-                        IsDirectory = false
+                        IsDirectory = false,
+                        ChannelCount = fileType == "mp3" ? ReadChannelCount(file) : 2
                     });
                 }
             }
@@ -195,5 +202,18 @@ public class FileCacheService
         path = Environment.ExpandEnvironmentVariables(path);
 
         return Path.GetFullPath(path);
+    }
+
+    private int ReadChannelCount(string filePath)
+    {
+        try
+        {
+            using var tagFile = TagLib.File.Create(filePath);
+            return tagFile.Properties.AudioChannels;
+        }
+        catch
+        {
+            return 2;
+        }
     }
 }
