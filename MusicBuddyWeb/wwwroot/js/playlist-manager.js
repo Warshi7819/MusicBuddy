@@ -167,6 +167,16 @@ var playlistManager = (function () {
     function refreshPlaylistList() {
         return apiFetch(apiBase + '?type=' + currentFileType).then(function (playlists) {
             renderPlaylistDropdown(playlists);
+            var saved = localStorage.getItem('musicbuddy_last_playlist_' + currentFileType);
+            if (saved) {
+                var id = parseInt(saved);
+                var exists = playlists.some(function (p) { return p.id === id; });
+                if (exists) {
+                    currentPlaylistId = id;
+                    var select = document.getElementById('pm-playlist-select');
+                    if (select) select.value = saved;
+                }
+            }
         });
     }
 
@@ -179,6 +189,7 @@ var playlistManager = (function () {
             if (select) {
                 select.addEventListener('change', function () {
                     currentPlaylistId = this.value ? parseInt(this.value) : null;
+                    localStorage.setItem('musicbuddy_last_playlist_' + currentFileType, currentPlaylistId || '');
                     loadPlaylistTracks();
                 });
             }
@@ -193,6 +204,7 @@ var playlistManager = (function () {
                         body: JSON.stringify({ name: name, fileType: currentFileType })
                     }).then(function (playlist) {
                         currentPlaylistId = playlist.id;
+                        localStorage.setItem('musicbuddy_last_playlist_' + currentFileType, playlist.id);
                         return refreshPlaylistList();
                     }).then(function () {
                         loadPlaylistTracks();
@@ -208,6 +220,7 @@ var playlistManager = (function () {
                     apiFetch(apiBase + '/' + currentPlaylistId, { method: 'DELETE' })
                         .then(function () {
                             currentPlaylistId = null;
+                            localStorage.removeItem('musicbuddy_last_playlist_' + currentFileType);
                             return refreshPlaylistList();
                         }).then(function () {
                             loadPlaylistTracks();
