@@ -60,6 +60,14 @@ var mp3Player = (function () {
         renderPlaylist();
     }
 
+    function normalizeTrack(track) {
+        return {
+            name: track.name || track.fileName || '',
+            path: track.path || track.filePath || '',
+            size: track.size || track.fileSize || 0
+        };
+    }
+
     function showPlayState() {
         document.getElementById('mp3-play').style.display = 'none';
         document.getElementById('mp3-pause').style.display = '';
@@ -165,6 +173,12 @@ var mp3Player = (function () {
             });
 
             document.getElementById('mp3-volume').dispatchEvent(new Event('input'));
+        },
+
+        loadPlaylist: function (tracks) {
+            playlist = tracks.map(normalizeTrack);
+            currentIndex = -1;
+            renderPlaylist();
         }
     };
 })();

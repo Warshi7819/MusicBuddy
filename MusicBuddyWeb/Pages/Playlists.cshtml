@@ -1,0 +1,116 @@
+@page
+@model MusicBuddyWeb.Pages.PlaylistsModel
+@{
+    ViewData["Title"] = "Playlists";
+}
+
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/Mp3"><i class="bi bi-file-earmark-music me-1"></i>MP3 Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/Sid"><i class="bi bi-cassette me-1"></i>jsSID Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-page="/WebSid"><i class="bi bi-cassette me-1"></i>webSID Player</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" asp-page="/Playlists"><i class="bi bi-music-note-list me-1"></i>Playlists</a>
+    </li>
+</ul>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-collection me-1"></i>My Playlists</span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary" id="pm-create-btn" title="Create playlist">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="pm-delete-btn" title="Delete playlist" disabled>
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small text-muted">File type</label>
+                    <select class="form-select form-select-sm" id="pm-type-select">
+                        <option value="mp3">MP3</option>
+                        <option value="sid">SID</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Playlist</label>
+                    <select class="form-select form-select-sm" id="pm-playlist-select">
+                        <option value="">-- Select playlist --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-music-note-list me-1"></i>Tracks</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary" id="pm-track-count">0</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-add-files-btn" disabled title="Add files">
+                        <i class="bi bi-plus-lg me-1"></i>Add Files
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="pm-clear-btn" disabled title="Clear all tracks">
+                        <i class="bi bi-trash me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+            <div class="list-group list-group-flush" id="pm-tracks" style="max-height: 600px; overflow-y: auto;">
+            </div>
+            <div class="card-body text-center text-muted py-4" id="pm-empty-state">
+                <i class="bi bi-music-note-beamed" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">Select a playlist or create a new one</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="Shared/_FileBrowserModal" />
+
+@section Scripts {
+    <script src="~/js/file-browser.js" asp-append-version="true"></script>
+    <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var typeSelect = document.getElementById('pm-type-select');
+            var addBtn = document.getElementById('pm-add-files-btn');
+            var clearBtn = document.getElementById('pm-clear-btn');
+            var deleteBtn = document.getElementById('pm-delete-btn');
+            var emptyState = document.getElementById('pm-empty-state');
+
+            playlistManager.init({
+                fileType: typeSelect.value,
+                onPlaylistLoaded: function (data) {
+                    var hasTracks = data.tracks && data.tracks.length > 0;
+                    emptyState.style.display = hasTracks ? 'none' : '';
+                    addBtn.disabled = false;
+                    clearBtn.disabled = !hasTracks;
+                    deleteBtn.disabled = false;
+                }
+            });
+
+            typeSelect.addEventListener('change', function () {
+                playlistManager.init({
+                    fileType: typeSelect.value,
+                    onPlaylistLoaded: function (data) {
+                        var hasTracks = data.tracks && data.tracks.length > 0;
+                        emptyState.style.display = hasTracks ? 'none' : '';
+                        addBtn.disabled = false;
+                        clearBtn.disabled = !hasTracks;
+                        deleteBtn.disabled = false;
+                    }
+                });
+            });
+        })();
+    </script>
+}

@@ -84,9 +84,28 @@
 
     <div class="col-lg-4">
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-music-note-list me-1"></i>Playlist</span>
-                <span class="badge bg-secondary" id="sid-count">0</span>
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span><i class="bi bi-music-note-list me-1"></i>Playlist</span>
+                    <span class="badge bg-secondary" id="sid-count">0</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;">
+                        <option value="">-- All files --</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-create-btn" title="New playlist">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pm-add-files-btn" title="Add files from browser" disabled>
+                        <i class="bi bi-folder2-open"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="pm-delete-btn" title="Delete playlist" disabled>
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="pm-clear-btn" title="Clear all tracks" disabled>
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
             </div>
             <div class="list-group list-group-flush" id="sid-playlist" style="max-height: 500px; overflow-y: auto;">
             </div>
@@ -97,9 +116,33 @@
 @section Scripts {
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas');</script>
+    <script src="~/js/file-browser.js" asp-append-version="true"></script>
+    <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/lib/jsSID.js"></script>
     <script src="~/js/sid-player.js" asp-append-version="true"></script>
     <script>
-        sidPlayer.init(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Files, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })));
+        (function () {
+            sidPlayer.init([]);
+
+            var select = document.getElementById('pm-playlist-select');
+
+            playlistManager.init({
+                fileType: 'sid',
+                onPlaylistLoaded: function (data) {
+                    if (data && data.tracks && data.tracks.length > 0) {
+                        sidPlayer.loadPlaylist(data.tracks);
+                    } else {
+                        sidPlayer.loadPlaylist([]);
+                    }
+                }
+            });
+
+            select.addEventListener('change', function () {
+                if (!this.value) {
+                    sidPlayer.loadPlaylist([]);
+                }
+            });
+        })();
     </script>
+    <partial name="Shared/_FileBrowserModal" />
 }

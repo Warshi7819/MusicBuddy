@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MusicBuddyAPI.Data;
+using MusicBuddyAPI.Services;
 using MusicBuddyShared.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<FileCacheService>();
 
 builder.Services.AddDbContext<MusicBuddyDbContext>(options =>
     options.UseSqlite("Data Source=musicbuddy.db"));

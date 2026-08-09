@@ -14,4 +14,8 @@
     <ProjectReference Include="..\MusicBuddyShared\MusicBuddyShared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="wwwroot\Music\**" />
+  </ItemGroup>
+
 </Project>

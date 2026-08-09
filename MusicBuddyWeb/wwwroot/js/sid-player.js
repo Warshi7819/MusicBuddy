@@ -86,6 +86,14 @@ var sidPlayer = (function () {
         playing = false;
     }
 
+    function normalizeTrack(track) {
+        return {
+            name: track.name || track.fileName || '',
+            path: track.path || track.filePath || '',
+            size: track.size || track.fileSize || 0
+        };
+    }
+
     return {
         init: function (files) {
             playlist = files;
@@ -191,6 +199,12 @@ var sidPlayer = (function () {
             });
 
             document.getElementById('sid-volume').dispatchEvent(new Event('input'));
+        },
+
+        loadPlaylist: function (tracks) {
+            playlist = tracks.map(normalizeTrack);
+            currentIndex = -1;
+            renderPlaylist();
         }
     };
 })();

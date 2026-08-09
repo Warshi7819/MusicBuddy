@@ -62,6 +62,14 @@ var websidPlayer = (function () {
         playing = false;
     }
 
+    function normalizeTrack(track) {
+        return {
+            name: track.name || track.fileName || '',
+            path: track.path || track.filePath || '',
+            size: track.size || track.fileSize || 0
+        };
+    }
+
     function initBackend() {
         return new Promise(function (resolve) {
             if (initialized) { resolve(); return; }
@@ -215,6 +223,12 @@ var websidPlayer = (function () {
                     vuMeter.setLevels(0, 0);
                 }
             }, 50);
+        },
+
+        loadPlaylist: function (tracks) {
+            playlist = tracks.map(normalizeTrack);
+            currentIndex = -1;
+            renderPlaylist();
         }
     };
 })();
