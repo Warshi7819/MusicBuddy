@@ -6,6 +6,10 @@ artifacts/
 # Database
 musicbuddy.db*
 
+# Music files (large binaries)
+MusicBuddyWeb/wwwroot/Music/Mp3/*
+MusicBuddyWeb/wwwroot/Music/Sid/*
+
 # IDE
 .vs/
 .idea/
