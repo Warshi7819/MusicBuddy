@@ -28,7 +28,7 @@ var mp3Player = (function () {
             var item = document.createElement('button');
             item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
             item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
-                '<span class="text-truncate me-2">' + escapeHtml(f.name) + ' <small class="text-muted">(c=' + (f.channelCount || '?') + ')</small></span>' +
+                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
                 '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
                 '</div>';
             item.addEventListener('click', function () { loadTrack(i); });
