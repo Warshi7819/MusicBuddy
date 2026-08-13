@@ -8,6 +8,7 @@ var websidPlayer = (function () {
     var preferredModel = null;
     var updateInterval = null;
     var onTrackEnded = null;
+    var onTrackChanged = null;
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -119,6 +120,7 @@ var websidPlayer = (function () {
     }
 
     function playFile(file) {
+        if (onTrackChanged) onTrackChanged(file);
         document.getElementById('websid-title').textContent = file.name;
         document.getElementById('websid-author').textContent = '';
         document.getElementById('websid-info').textContent = 'Loading...';
@@ -307,8 +309,28 @@ var websidPlayer = (function () {
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
         },
 
+        selectByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) {
+                    currentIndex = i;
+                    renderPlaylist();
+                    document.getElementById('websid-title').textContent = playlist[i].name;
+                    document.getElementById('websid-author').textContent = '';
+                    document.getElementById('websid-info').textContent = '';
+                    document.getElementById('websid-time').textContent = '0:00';
+                    document.getElementById('websid-duration').textContent = '';
+                    document.getElementById('websid-seek-fill').style.width = '0%';
+                    return;
+                }
+            }
+        },
+
         setOnTrackEnded: function (fn) {
             onTrackEnded = fn;
+        },
+
+        setOnTrackChanged: function (fn) {
+            onTrackChanged = fn;
         },
 
         getTransportState: function () {

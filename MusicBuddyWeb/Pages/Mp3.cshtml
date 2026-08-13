@@ -100,6 +100,7 @@
 @section Scripts {
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
+    <script src="~/js/resume-cookie.js" asp-append-version="true"></script>
     <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/js/mp3-player.js" asp-append-version="true"></script>
     <script src="~/js/playlist-editor.js" asp-append-version="true"></script>
@@ -119,6 +120,15 @@
                         mp3Player.syncPlaylist([]);
                     }
                 }
+            }).then(function () {
+                var resume = resumeCookie.loadResume('mp3');
+                if (resume && resume.playlistId && resume.track) {
+                    mp3Player.selectByPath(resume.track);
+                }
+            });
+
+            mp3Player.setOnTrackChanged(function (file) {
+                resumeCookie.saveResume('mp3', playlistManager.getCurrentPlaylistId(), file.path);
             });
 
             manageBtn.addEventListener('click', function () {

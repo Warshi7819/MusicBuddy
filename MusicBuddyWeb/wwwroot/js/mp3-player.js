@@ -12,6 +12,7 @@ var mp3Player = (function () {
     var source = null;
     var currentTrack = null;
     var onTrackEnded = null;
+    var onTrackChanged = null;
 
     function formatTime(sec) {
         if (isNaN(sec)) return '0:00';
@@ -58,6 +59,7 @@ var mp3Player = (function () {
 
     function playFile(file) {
         currentTrack = file;
+        if (onTrackChanged) onTrackChanged(file);
         document.getElementById('mp3-title').textContent = file.name;
         document.getElementById('mp3-artist').textContent = '';
         document.getElementById('mp3-time').textContent = '0:00';
@@ -183,6 +185,7 @@ var mp3Player = (function () {
             startVu();
 
             document.getElementById('mp3-play').addEventListener('click', function () {
+                if (currentIndex >= 0 && !audio.src) { loadTrack(currentIndex); return; }
                 var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
                 p.then(function () {
                     if (currentIndex < 0 && playlist.length > 0) {
@@ -250,8 +253,29 @@ var mp3Player = (function () {
             playFile({ name: path.split('/').pop(), path: path, size: 0, channelCount: 2 });
         },
 
+        selectByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) {
+                    currentIndex = i;
+                    currentTrack = playlist[i];
+                    renderPlaylist();
+                    document.getElementById('mp3-title').textContent = currentTrack.name;
+                    document.getElementById('mp3-artist').textContent = '';
+                    document.getElementById('mp3-time').textContent = '0:00';
+                    document.getElementById('mp3-duration').textContent = '0:00';
+                    document.getElementById('mp3-seek-fill').style.width = '0%';
+                    loadAlbumArt(currentTrack.path);
+                    return;
+                }
+            }
+        },
+
         setOnTrackEnded: function (fn) {
             onTrackEnded = fn;
+        },
+
+        setOnTrackChanged: function (fn) {
+            onTrackChanged = fn;
         },
 
         getTransportState: function () {
@@ -270,6 +294,7 @@ var mp3Player = (function () {
 
         playPause: function () {
             if (!audio.paused) { audio.pause(); return; }
+            if (currentIndex >= 0 && !audio.src) { loadTrack(currentIndex); return; }
             var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
             p.then(function () {
                 if (currentIndex < 0 && playlist.length > 0) {

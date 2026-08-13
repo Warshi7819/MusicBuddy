@@ -108,6 +108,7 @@
 @section Scripts {
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
+    <script src="~/js/resume-cookie.js" asp-append-version="true"></script>
     <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/lib/jsSID.js"></script>
     <script src="~/js/sid-player.js" asp-append-version="true"></script>
@@ -128,6 +129,15 @@
                         sidPlayer.syncPlaylist([]);
                     }
                 }
+            }).then(function () {
+                var resume = resumeCookie.loadResume('sid');
+                if (resume && resume.playlistId && resume.track) {
+                    sidPlayer.selectByPath(resume.track);
+                }
+            });
+
+            sidPlayer.setOnTrackChanged(function (file) {
+                resumeCookie.saveResume('sid', playlistManager.getCurrentPlaylistId(), file.path);
             });
 
             manageBtn.addEventListener('click', function () {

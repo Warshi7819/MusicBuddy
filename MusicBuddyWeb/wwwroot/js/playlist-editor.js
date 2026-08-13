@@ -54,7 +54,7 @@ var playlistEditor = (function () {
     }
 
     function storeLastPlaylist() {
-        localStorage.setItem('musicbuddy_last_playlist_' + fileType, currentPlaylistId || '');
+        resumeCookie.saveResume(fileType, currentPlaylistId);
     }
 
     function getPlayer() {
@@ -80,6 +80,7 @@ var playlistEditor = (function () {
         if (player && player.playByPath) {
             if (player.setOnTrackEnded) player.setOnTrackEnded(handleTrackEnded);
             player.playByPath(path);
+            resumeCookie.saveResume(fileType, currentPlaylistId, path);
         }
         setPlayingRow(path);
     }
@@ -248,8 +249,8 @@ var playlistEditor = (function () {
                 requested = playlistManager.getCurrentPlaylistId();
             }
             if (!requested) {
-                var saved = localStorage.getItem('musicbuddy_last_playlist_' + fileType);
-                if (saved) requested = parseInt(saved);
+                var saved = resumeCookie.loadResume(fileType);
+                if (saved && saved.playlistId) requested = saved.playlistId;
             }
             if (requested && !playlists.some(function (p) { return p.id === requested; })) {
                 requested = null;
@@ -363,7 +364,7 @@ var playlistEditor = (function () {
             apiFetch(API_PLAYLISTS + '/' + currentPlaylistId, { method: 'DELETE' })
                 .then(function () {
                     playlists = playlists.filter(function (p) { return p.id !== currentPlaylistId; });
-                    localStorage.removeItem('musicbuddy_last_playlist_' + fileType);
+                    resumeCookie.clearResume(fileType);
                     if (playlists.length > 0) {
                         return switchPlaylist(playlists[0].id);
                     }

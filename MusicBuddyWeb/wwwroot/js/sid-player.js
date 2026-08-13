@@ -7,6 +7,8 @@ var sidPlayer = (function () {
     var updateInterval = null;
     var preferredModel = null;
     var onTrackEnded = null;
+    var onTrackChanged = null;
+    var tuneLoaded = false;
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -61,6 +63,8 @@ var sidPlayer = (function () {
 
     function playFile(file) {
         subtune = 0;
+        tuneLoaded = true;
+        if (onTrackChanged) onTrackChanged(file);
         document.getElementById('sid-title').textContent = file.name;
         document.getElementById('sid-author').textContent = '';
         document.getElementById('sid-info').textContent = 'Loading...';
@@ -168,6 +172,7 @@ var sidPlayer = (function () {
             }, 50);
 
             document.getElementById('sid-play').addEventListener('click', function () {
+                if (currentIndex >= 0 && !tuneLoaded) { loadTrack(currentIndex); return; }
                 if (currentIndex < 0 && playlist.length > 0) {
                     loadTrack(0);
                 } else if (player) {
@@ -252,8 +257,29 @@ var sidPlayer = (function () {
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
         },
 
+        selectByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) {
+                    currentIndex = i;
+                    tuneLoaded = false;
+                    renderPlaylist();
+                    document.getElementById('sid-title').textContent = playlist[i].name;
+                    document.getElementById('sid-author').textContent = '';
+                    document.getElementById('sid-info').textContent = '';
+                    document.getElementById('sid-time').textContent = '0:00';
+                    document.getElementById('sid-duration').textContent = '';
+                    document.getElementById('sid-seek-fill').style.width = '0%';
+                    return;
+                }
+            }
+        },
+
         setOnTrackEnded: function (fn) {
             onTrackEnded = fn;
+        },
+
+        setOnTrackChanged: function (fn) {
+            onTrackChanged = fn;
         },
 
         getTransportState: function () {
@@ -270,6 +296,7 @@ var sidPlayer = (function () {
 
         playPause: function () {
             if (!player) return;
+            if (currentIndex >= 0 && !tuneLoaded) { loadTrack(currentIndex); return; }
             if (playing) { player.pause(); showPauseState(); }
             else { player.playcont(); showPlayState(); }
         },

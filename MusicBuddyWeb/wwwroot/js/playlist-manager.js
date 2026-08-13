@@ -40,14 +40,14 @@ var playlistManager = (function () {
     function refreshPlaylistList() {
         return apiFetch(apiBase + '?type=' + currentFileType).then(function (playlists) {
             renderPlaylistDropdown(playlists);
-            var saved = localStorage.getItem('musicbuddy_last_playlist_' + currentFileType);
-            if (saved) {
-                var id = parseInt(saved);
+            var saved = resumeCookie.loadResume(currentFileType);
+            if (saved && saved.playlistId) {
+                var id = saved.playlistId;
                 var exists = playlists.some(function (p) { return p.id === id; });
                 if (exists) {
                     currentPlaylistId = id;
                     var select = document.getElementById('pm-playlist-select');
-                    if (select) select.value = saved;
+                    if (select) select.value = id;
                 }
             }
         });
@@ -62,13 +62,13 @@ var playlistManager = (function () {
             if (select) {
                 select.addEventListener('change', function () {
                     currentPlaylistId = this.value ? parseInt(this.value) : null;
-                    localStorage.setItem('musicbuddy_last_playlist_' + currentFileType, currentPlaylistId || '');
+                    resumeCookie.saveResume(currentFileType, currentPlaylistId);
                     loadPlaylistTracks();
                 });
             }
 
             return refreshPlaylistList().then(function () {
-                loadPlaylistTracks();
+                return loadPlaylistTracks();
             });
         },
 
