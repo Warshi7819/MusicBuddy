@@ -57,13 +57,17 @@ var playlistEditor = (function () {
         localStorage.setItem('musicbuddy_last_playlist_' + fileType, currentPlaylistId || '');
     }
 
-    function hasPlayer() {
-        return fileType === 'mp3' ? typeof mp3Player !== 'undefined' :
-               fileType === 'sid' ? typeof sidPlayer !== 'undefined' : false;
+    function getPlayer() {
+        if (fileType === 'mp3') return typeof mp3Player !== 'undefined' ? mp3Player : null;
+        if (fileType === 'sid') {
+            if (typeof sidPlayer !== 'undefined') return sidPlayer;
+            if (typeof websidPlayer !== 'undefined') return websidPlayer;
+        }
+        return null;
     }
 
-    function getPlayer() {
-        return fileType === 'mp3' ? mp3Player : (fileType === 'sid' ? sidPlayer : null);
+    function hasPlayer() {
+        return getPlayer() !== null;
     }
 
     function playPath(path, context) {

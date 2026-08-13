@@ -11,7 +11,7 @@ var vuMeter = (function () {
     var CANVAS_HEIGHT = METER_HEIGHT + 10;
 
     var TICK_DB = [-60, -50, -40, -30, -20, -10, 0];
-    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'greenglow', 'flatgold'];
+    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'greenglow', 'flatgold', 'ledbar'];
 
     function clamp01(v) {
         return Math.max(0, Math.min(1, v));
@@ -341,6 +341,67 @@ var vuMeter = (function () {
         c.restore();
     }
 
+    // ---- LED bar style (ledbar) ----
+
+    var LED_SEGMENTS = 24;
+    var LED_BAR_X = 10;
+    var LED_BAR_W = 360;
+    var LED_BAR_H = 30;
+    var LED_GAP = 2;
+    var LED_SEG_W = (LED_BAR_W - (LED_SEGMENTS - 1) * LED_GAP) / LED_SEGMENTS;
+    var LED_BAR_Y1 = 26;
+    var LED_BAR_Y2 = 26 + LED_BAR_H + 14;
+
+    var LED_ZONES = [
+        { end: 0.6, lit: '#2ecc40', glow: 'rgba(46, 204, 64, 0.55)' },
+        { end: 0.85, lit: '#ffd700', glow: 'rgba(255, 215, 0, 0.55)' },
+        { end: 1.01, lit: '#ff4136', glow: 'rgba(255, 65, 54, 0.55)' }
+    ];
+
+    function ledZoneColor(index) {
+        var t = (index + 0.5) / LED_SEGMENTS;
+        for (var z = 0; z < LED_ZONES.length; z++) {
+            if (t < LED_ZONES[z].end) return LED_ZONES[z];
+        }
+        return LED_ZONES[LED_ZONES.length - 1];
+    }
+
+    function drawLedBar(c, y, level) {
+        c.save();
+
+        c.fillStyle = '#0a0e1a';
+        c.shadowColor = 'rgba(50, 200, 120, 0.25)';
+        c.shadowBlur = 14;
+        roundRect(c, LED_BAR_X, y, LED_BAR_W, LED_BAR_H, 4);
+        c.fill();
+        c.shadowBlur = 0;
+
+        c.strokeStyle = 'rgba(120, 220, 160, 0.2)';
+        c.lineWidth = 1;
+        roundRect(c, LED_BAR_X + 1, y + 1, LED_BAR_W - 2, LED_BAR_H - 2, 3);
+        c.stroke();
+
+        var litCount = Math.round(((levelToDb(level) - TICK_DB[0]) / (TICK_DB[TICK_DB.length - 1] - TICK_DB[0])) * LED_SEGMENTS);
+        for (var i = 0; i < LED_SEGMENTS; i++) {
+            var x = LED_BAR_X + 3 + i * (LED_SEG_W + LED_GAP);
+            var segW = LED_SEG_W - 2;
+            var lit = i < litCount;
+            var zone = ledZoneColor(i);
+            if (lit) {
+                c.shadowColor = zone.glow;
+                c.shadowBlur = 5;
+                c.fillStyle = zone.lit;
+            } else {
+                c.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            }
+            roundRect(c, x, y + 4, segW, LED_BAR_H - 8, 2);
+            c.fill();
+            c.shadowBlur = 0;
+        }
+
+        c.restore();
+    }
+
     // ---- instances ----
 
     function createInstance(canvasId, style) {
@@ -376,6 +437,9 @@ var vuMeter = (function () {
             if (state.style === 'flatgold') {
                 drawFlatMeter(c, 10 + METER_WIDTH / 2, state.currentLeft);
                 drawFlatMeter(c, 10 + METER_WIDTH + METER_GAP + METER_WIDTH / 2, state.currentRight);
+            } else if (state.style === 'ledbar') {
+                drawLedBar(c, LED_BAR_Y1, state.currentLeft);
+                drawLedBar(c, LED_BAR_Y2, state.currentRight);
             } else {
                 var palette = ARC_PALETTES[state.style];
                 drawArcMeter(c, 10 + METER_WIDTH / 2, state.currentLeft, palette);
