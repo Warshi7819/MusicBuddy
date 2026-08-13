@@ -110,6 +110,40 @@ body {
   letter-spacing: 0.05em;
 }
 
+@media (max-width: 575.98px) {
+  .mp3-vu-row {
+    gap: 0.5rem;
+  }
+
+  .mp3-album-art {
+    width: 80px;
+    height: 80px;
+  }
+
+  .mp3-vu-wrap {
+    zoom: 0.7;
+  }
+
+  .mp3-art-placeholder i {
+    font-size: 1.35rem;
+  }
+
+  .mp3-art-placeholder small {
+    font-size: 0.55rem;
+  }
+}
+
+@media (max-width: 389.98px) {
+  .mp3-album-art {
+    width: 72px;
+    height: 72px;
+  }
+
+  .mp3-vu-wrap {
+    zoom: 0.62;
+  }
+}
+
 /* File browser modal */
 #fb-listing .list-group-item {
   cursor: pointer;
