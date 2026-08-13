@@ -1,0 +1,88 @@
+@page
+@model MusicBuddyWeb.Pages.Settings.VuMetersModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "VU Meters";
+}
+
+<h2 class="mb-2"><i class="bi bi-activity"></i> VU Meters</h2>
+<p class="text-muted mb-4">
+    Choose the visual style of the VU meters used on the player pages.
+    All styles cover the same -60 to 0 dB range.
+</p>
+
+<div class="row">
+    @foreach (var (id, name, icon) in new[] {
+        ("classic", "Classic", "bi-speedometer2"),
+        ("glow", "Yellow Glow", "bi-lightbulb"),
+        ("blueglow", "Blue Glow", "bi-droplet"),
+        ("flatgold", "Flat Gold", "bi-layout-three-columns")
+    })
+    {
+        var isActive = Model.CurrentStyle == id;
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100 @(isActive ? "border-primary" : "")">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title mb-2">
+                        @if (isActive)
+                        {
+                            <i class="bi bi-check-circle-fill text-primary me-1"></i>
+                        }
+                        <i class="bi @icon text-warning me-1"></i> @name
+                    </h5>
+                    <div class="vu-preview-wrap mb-3">
+                        <canvas class="vu-preview-canvas" id="vu-preview-@id"></canvas>
+                    </div>
+                    <form method="post" asp-page-handler="Select" asp-route-style="@id" class="mt-auto">
+                        <button type="submit" class="btn w-100 @(isActive ? "btn-primary" : "btn-outline-primary")"
+                        @(isActive ? "disabled" : "")>
+                            @if (isActive)
+                            {
+                                <text>Active</text>
+                            }
+                            else
+                            {
+                                <text>Apply</text>
+                            }
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/vu-meter.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var specs = [
+                { id: 'vu-preview-classic', style: 'classic' },
+                { id: 'vu-preview-glow', style: 'glow' },
+                { id: 'vu-preview-blueglow', style: 'blueglow' },
+                { id: 'vu-preview-flatgold', style: 'flatgold' }
+            ];
+            var instances = [];
+            specs.forEach(function (s) {
+                var inst = vuMeter.init(s.id, s.style);
+                if (inst) instances.push(inst);
+            });
+            if (!instances.length) return;
+
+            var t = 0;
+            function demoLevel(seed) {
+                t += 0.04;
+                var slow = 0.30 + 0.22 * Math.sin(t * 1.1 + seed);
+                var kick = Math.pow(Math.max(0, Math.sin(t * 0.37 + seed * 1.7)), 7);
+                return Math.min(1, slow * 0.6 + kick * 0.6 + 0.04 * Math.sin(t * 2.6 + seed));
+            }
+
+            setInterval(function () {
+                instances.forEach(function (inst, i) {
+                    var seed = i * 1.9;
+                    inst.setLevels(demoLevel(seed), demoLevel(seed + 0.8));
+                });
+            }, 120);
+        })();
+    </script>
+}

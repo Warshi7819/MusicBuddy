@@ -69,6 +69,20 @@ body {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
+.vu-preview-wrap {
+  background: #0a0e1a;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.vu-preview-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
 .mp3-vu-row {
   min-height: 115px;
 }

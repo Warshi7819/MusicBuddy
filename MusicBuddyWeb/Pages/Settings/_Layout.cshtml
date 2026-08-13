@@ -11,6 +11,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link @(currentPage == "/Settings/VuMeters" ? "active" : "")"
+           asp-page="/Settings/VuMeters">
+            <i class="bi bi-activity"></i> VU Meters
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link @(currentPage == "/Settings/Profile" ? "active" : "")"
            asp-page="/Settings/Profile">
             <i class="bi bi-person"></i> Profile

@@ -7,6 +7,8 @@
     string? customCss = null;
     string? navbarBg = null;
     string? navbarTextColor = null;
+    var vuStyleCookie = Context.Request.Cookies["MusicBuddyVUMeter"];
+    var vuStyle = (vuStyleCookie is "classic" or "glow" or "blueglow" or "flatgold") ? vuStyleCookie : "classic";
 
     if (themeCookie == "dark")
     {
@@ -117,7 +119,7 @@
         <style>@Html.Raw(customCss)</style>
     }
 </head>
-<body>
+<body data-vu-style="@vuStyle">
     <header>
         <nav class="navbar navbar-expand-sm @navbarClass @(customCss is not null ? "" : "bg-white") border-bottom shadow-sm mb-4"
              style="@(navbarBg is not null ? $"background-color:{navbarBg}" : null)">

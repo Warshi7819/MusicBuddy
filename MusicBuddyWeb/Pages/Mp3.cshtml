@@ -108,7 +108,7 @@
 
 @section Scripts {
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
-    <script>vuMeter.init('vu-canvas');</script>
+    <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
     <script src="~/js/file-browser.js" asp-append-version="true"></script>
     <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/js/mp3-player.js" asp-append-version="true"></script>
