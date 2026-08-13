@@ -261,37 +261,49 @@ var playlistEditor = (function () {
 
     function deletePlaylist() {
         if (!currentPlaylistId) return;
-        if (!confirm('Delete playlist "' + currentPlaylistName + '" and all its tracks?')) return;
-        apiFetch(API_PLAYLISTS + '/' + currentPlaylistId, { method: 'DELETE' })
-            .then(function () {
-                playlists = playlists.filter(function (p) { return p.id !== currentPlaylistId; });
-                localStorage.removeItem('musicbuddy_last_playlist_' + fileType);
-                if (playlists.length > 0) {
-                    return switchPlaylist(playlists[0].id);
-                }
-                currentPlaylistId = null;
-                currentPlaylistName = '';
-                renderPlaylistSelect();
-                loadTracks();
-                syncPlayer();
-            }).then(function () {
-                flashSaved();
-            }).catch(function (err) {
-                toast(err.message, true);
-            });
+        musicbuddyConfirm('Delete playlist "' + currentPlaylistName + '" and all its tracks?', {
+            title: 'Delete playlist',
+            confirmText: 'Delete',
+            variant: 'danger'
+        }).then(function (ok) {
+            if (!ok) return;
+            apiFetch(API_PLAYLISTS + '/' + currentPlaylistId, { method: 'DELETE' })
+                .then(function () {
+                    playlists = playlists.filter(function (p) { return p.id !== currentPlaylistId; });
+                    localStorage.removeItem('musicbuddy_last_playlist_' + fileType);
+                    if (playlists.length > 0) {
+                        return switchPlaylist(playlists[0].id);
+                    }
+                    currentPlaylistId = null;
+                    currentPlaylistName = '';
+                    renderPlaylistSelect();
+                    loadTracks();
+                    syncPlayer();
+                }).then(function () {
+                    flashSaved();
+                }).catch(function (err) {
+                    toast(err.message, true);
+                });
+        });
     }
 
     function clearPlaylist() {
         if (!currentPlaylistId) return;
-        if (!confirm('Remove all tracks from this playlist?')) return;
-        apiFetch(API_PLAYLISTS + '/' + currentPlaylistId + '/tracks', { method: 'DELETE' })
-            .then(function () {
-                flashSaved();
-                syncPlayer();
-                return loadTracks();
-            }).catch(function (err) {
-                toast(err.message, true);
-            });
+        musicbuddyConfirm('Remove all tracks from this playlist?', {
+            title: 'Clear playlist',
+            confirmText: 'Clear',
+            variant: 'danger'
+        }).then(function (ok) {
+            if (!ok) return;
+            apiFetch(API_PLAYLISTS + '/' + currentPlaylistId + '/tracks', { method: 'DELETE' })
+                .then(function () {
+                    flashSaved();
+                    syncPlayer();
+                    return loadTracks();
+                }).catch(function (err) {
+                    toast(err.message, true);
+                });
+        });
     }
 
     function removeTrack(trackId) {

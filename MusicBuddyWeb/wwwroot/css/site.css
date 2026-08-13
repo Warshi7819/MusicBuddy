@@ -199,11 +199,7 @@ body {
   min-height: 0;
 }
 
-.playlist-editor-modal .modal-header .btn-close {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 50%;
+.modal-header .btn-close {
   --bs-btn-close-bg: none;
   background-color: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") center/0.9rem auto no-repeat;
@@ -211,10 +207,20 @@ body {
   color: var(--bs-secondary-color);
 }
 
-.playlist-editor-modal .modal-header .btn-close:hover {
+.modal-header .btn-close:hover {
   border-color: var(--bs-secondary-color);
-  background-color: rgba(255, 255, 255, 0.08);
   color: var(--bs-body-color);
+}
+
+.playlist-editor-modal .modal-header .btn-close {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 50%;
+}
+
+.playlist-editor-modal .modal-header .btn-close:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .pe-playlist-select {
