@@ -5,6 +5,7 @@ var sidPlayer = (function () {
     var playing = false;
     var subtune = 0;
     var updateInterval = null;
+    var preferredModel = null;
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -74,6 +75,23 @@ var sidPlayer = (function () {
         document.getElementById('sid-sub-up').disabled = subtune >= total - 1;
     }
 
+    function setAutoButtonState() {
+        var btn = document.getElementById('sid-model-auto');
+        if (!btn) return;
+        btn.className = 'btn btn-sm ' + (preferredModel === null ? 'btn-primary' : 'btn-outline-secondary');
+    }
+
+    function syncModelUI() {
+        if (!player) return;
+        if (preferredModel === null) {
+            player.setmodel(player.getprefmodel());
+        }
+        var active = player.getmodel();
+        document.getElementById('sid-model-6581').checked = active === 6581;
+        document.getElementById('sid-model-8580').checked = active !== 6581;
+        setAutoButtonState();
+    }
+
     function showPlayState() {
         document.getElementById('sid-play').style.display = 'none';
         document.getElementById('sid-pause').style.display = '';
@@ -105,12 +123,7 @@ var sidPlayer = (function () {
                     author ? author + ' — ' + info : info;
                 document.getElementById('sid-info').textContent = '';
                 updateSubtuneUI();
-                var pref = player.getprefmodel();
-                if (pref === 6581) {
-                    document.getElementById('sid-model-6581').checked = true;
-                } else {
-                    document.getElementById('sid-model-8580').checked = true;
-                }
+                syncModelUI();
             });
             player.setstartcallback(function () {
                 showPlayState();
@@ -194,8 +207,14 @@ var sidPlayer = (function () {
             });
             document.querySelectorAll('input[name="sid-model"]').forEach(function (el) {
                 el.addEventListener('change', function () {
-                    if (player) player.setmodel(parseFloat(this.value));
+                    preferredModel = parseFloat(this.value);
+                    if (player) player.setmodel(preferredModel);
+                    setAutoButtonState();
                 });
+            });
+            document.getElementById('sid-model-auto').addEventListener('click', function () {
+                preferredModel = null;
+                syncModelUI();
             });
 
             document.getElementById('sid-volume').dispatchEvent(new Event('input'));

@@ -4,6 +4,8 @@ var websidPlayer = (function () {
     var playing = false;
     var initialized = false;
     var player = null;
+    var backend = null;
+    var preferredModel = null;
     var updateInterval = null;
 
     function formatTime(sec) {
@@ -50,6 +52,26 @@ var websidPlayer = (function () {
         document.getElementById('websid-sub-up').disabled = current >= total;
     }
 
+    function setAutoButtonState() {
+        var btn = document.getElementById('websid-model-auto');
+        if (!btn) return;
+        btn.className = 'btn btn-sm ' + (preferredModel === null ? 'btn-primary' : 'btn-outline-secondary');
+    }
+
+    function applyModel() {
+        if (!backend || preferredModel === null) return;
+        backend.setSID6581(preferredModel === 6581 ? 1 : 0);
+    }
+
+    function syncModelUI() {
+        if (!backend) return;
+        applyModel();
+        var is6581 = backend.isSID6581();
+        document.getElementById('websid-model-6581').checked = !!is6581;
+        document.getElementById('websid-model-8580').checked = !is6581;
+        setAutoButtonState();
+    }
+
     function showPlayState() {
         document.getElementById('websid-play').style.display = 'none';
         document.getElementById('websid-pause').style.display = '';
@@ -74,7 +96,7 @@ var websidPlayer = (function () {
         return new Promise(function (resolve) {
             if (initialized) { resolve(); return; }
 
-            var backend = new SIDBackendAdapter();
+            backend = new SIDBackendAdapter();
             ScriptNodePlayer.initialize(backend, function () {
                 var next = currentIndex + 1;
                 if (next >= playlist.length) next = 0;
@@ -114,6 +136,7 @@ var websidPlayer = (function () {
                 document.getElementById('websid-author').textContent = info.songAuthor || '';
                 document.getElementById('websid-info').textContent = info.songReleased || '';
                 updateSubtuneUI(info);
+                syncModelUI();
                 showPlayState();
             });
         }
@@ -178,6 +201,7 @@ var websidPlayer = (function () {
                     ).then(function () {
                         var newInfo = player.getSongInfo();
                         updateSubtuneUI(newInfo);
+                        syncModelUI();
                         showPlayState();
                     });
                 }
@@ -197,9 +221,35 @@ var websidPlayer = (function () {
                     ).then(function () {
                         var newInfo = player.getSongInfo();
                         updateSubtuneUI(newInfo);
+                        syncModelUI();
                         showPlayState();
                     });
                 }
+            });
+
+            document.querySelectorAll('input[name="websid-model"]').forEach(function (el) {
+                el.addEventListener('change', function () {
+                    preferredModel = parseFloat(this.value);
+                    applyModel();
+                    setAutoButtonState();
+                });
+            });
+            document.getElementById('websid-model-auto').addEventListener('click', function () {
+                preferredModel = null;
+                setAutoButtonState();
+                if (!player || currentIndex < 0) return;
+                var info = player.getSongInfo();
+                var track = (info && info.actualSubsong) ? info.actualSubsong : 0;
+                ScriptNodePlayer.loadMusicFromURL(playlist[currentIndex].path,
+                    { track: track, timeout: -1, traceSID: false },
+                    function () {},
+                    function () {}
+                ).then(function () {
+                    var newInfo = player.getSongInfo();
+                    updateSubtuneUI(newInfo);
+                    syncModelUI();
+                    showPlayState();
+                });
             });
 
             document.getElementById('websid-volume').dispatchEvent(new Event('input'));
