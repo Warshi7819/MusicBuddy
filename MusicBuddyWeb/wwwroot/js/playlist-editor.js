@@ -21,6 +21,10 @@ var playlistEditor = (function () {
     var dropRowEl = null;
     var nameMode = null;
     var savedTimer = null;
+    var transportTimer = null;
+    var previewContext = [];
+    var previewIndex = -1;
+    var libraryFiles = [];
 
     function $(id) { return document.getElementById(id); }
 
@@ -58,9 +62,85 @@ var playlistEditor = (function () {
                fileType === 'sid' ? typeof sidPlayer !== 'undefined' : false;
     }
 
-    function playPath(path) {
-        var player = fileType === 'mp3' ? mp3Player : sidPlayer;
+    function getPlayer() {
+        return fileType === 'mp3' ? mp3Player : (fileType === 'sid' ? sidPlayer : null);
+    }
+
+    function playPath(path, context) {
+        previewContext = context || [];
+        previewIndex = -1;
+        for (var i = 0; i < previewContext.length; i++) {
+            if (previewContext[i] === path) { previewIndex = i; break; }
+        }
+        var player = getPlayer();
         if (player && player.playByPath) player.playByPath(path);
+        setPlayingRow(path);
+    }
+
+    function transportPrev() {
+        if (previewIndex <= 0) return;
+        previewIndex--;
+        playPath(previewContext[previewIndex], previewContext);
+    }
+
+    function transportNext() {
+        if (previewIndex < 0 || previewIndex >= previewContext.length - 1) return;
+        previewIndex++;
+        playPath(previewContext[previewIndex], previewContext);
+    }
+
+    function setPlayingRow(path) {
+        [tracksEl, libraryEl].forEach(function (list) {
+            if (!list) return;
+            list.querySelectorAll('.pe-track-row, .pe-library-row').forEach(function (row) {
+                var active = row.dataset.path === path;
+                row.classList.toggle('pe-playing', active);
+                if (active) row.scrollIntoView({ block: 'nearest' });
+            });
+        });
+    }
+
+    function formatTimeShort(sec) {
+        if (isNaN(sec) || sec < 0) return '0:00';
+        var m = Math.floor(sec / 60);
+        var s = Math.floor(sec % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function updateTransport() {
+        var player = getPlayer();
+        if (!player || !player.getTransportState) return;
+        var st = player.getTransportState();
+        var playEl = $('pe-t-play');
+        if (playEl) playEl.innerHTML = st.playing ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+        var timeEl = $('pe-t-time');
+        var seekEl = $('pe-t-seek');
+        if (typeof st.duration === 'string') {
+            if (timeEl) timeEl.textContent = (st.currentTime || '0:00') + ' / ' + (st.duration || '0:00');
+            return;
+        }
+        var dur = st.duration || 0;
+        var cur = st.currentTime || 0;
+        if (timeEl) timeEl.textContent = formatTimeShort(cur) + ' / ' + formatTimeShort(dur);
+        if (seekEl) {
+            seekEl.disabled = dur <= 0;
+            if (dur > 0 && document.activeElement !== seekEl) {
+                seekEl.value = Math.round((cur / dur) * 1000);
+            }
+        }
+    }
+
+    function startTransport() {
+        if (transportTimer) return;
+        updateTransport();
+        transportTimer = setInterval(updateTransport, 300);
+    }
+
+    function stopTransport() {
+        if (transportTimer) {
+            clearInterval(transportTimer);
+            transportTimer = null;
+        }
     }
 
     function syncPlayer() {
@@ -469,6 +549,7 @@ var playlistEditor = (function () {
     function renderLibrary(listing) {
         if (!libraryEl) return;
         libraryEl.innerHTML = '';
+        libraryFiles = (listing.files || []).map(function (f) { return f.path; });
 
         if (listing.directories && listing.directories.length > 0) {
             var dirHeader = document.createElement('div');
@@ -650,13 +731,34 @@ var playlistEditor = (function () {
             if (selection.length > 0) addToPlaylist(selection.slice(), -1);
         });
 
+        var tPrev = $('pe-t-prev');
+        var tPlay = $('pe-t-play');
+        var tNext = $('pe-t-next');
+        var tSeek = $('pe-t-seek');
+        if (tPrev) tPrev.addEventListener('click', transportPrev);
+        if (tNext) tNext.addEventListener('click', transportNext);
+        if (tPlay) tPlay.addEventListener('click', function () {
+            var p = getPlayer();
+            if (p && p.playPause) p.playPause();
+        });
+        if (tSeek) tSeek.addEventListener('input', function () {
+            var p = getPlayer();
+            if (!p || !p.getTransportState || !p.seekTo) return;
+            var st = p.getTransportState();
+            if (typeof st.duration === 'number' && st.duration > 0) {
+                p.seekTo((this.value / 1000) * st.duration);
+            }
+        });
+
         if (tracksEl) {
             tracksEl.addEventListener('click', function (e) {
                 var playBtn = e.target.closest('.pe-play-btn');
                 if (playBtn) {
                     e.stopPropagation();
                     var prow = playBtn.closest('.pe-track-row');
-                    if (prow) playPath(prow.dataset.path);
+                    if (prow) {
+                        playPath(prow.dataset.path, tracks.map(function (t) { return t.filePath; }));
+                    }
                     return;
                 }
                 var btn = e.target.closest('.pe-remove-btn');
@@ -744,7 +846,7 @@ var playlistEditor = (function () {
                 if (playBtn) {
                     e.stopPropagation();
                     var prow = playBtn.closest('.pe-library-row');
-                    if (prow) playPath(prow.dataset.path);
+                    if (prow) playPath(prow.dataset.path, libraryFiles);
                     return;
                 }
                 var row = e.target.closest('.pe-library-row');
@@ -765,6 +867,10 @@ var playlistEditor = (function () {
     function loadAll() {
         resetNameMode();
         deselectAll();
+        var transportEl = $('pe-transport');
+        if (transportEl) transportEl.style.display = hasPlayer() ? '' : 'none';
+        var seekEl = $('pe-t-seek');
+        if (seekEl) seekEl.style.display = fileType === 'mp3' ? '' : 'none';
         var select = $('pe-playlist-select');
         if (select) select.innerHTML = '<option value="">Loading…</option>';
         loadPlaylists();
@@ -777,7 +883,11 @@ var playlistEditor = (function () {
             if (!modal) {
                 modal = $('playlistEditorModal');
                 if (!modal) return;
-                modal.addEventListener('shown.bs.modal', loadAll);
+                modal.addEventListener('shown.bs.modal', function () {
+                    loadAll();
+                    startTransport();
+                });
+                modal.addEventListener('hidden.bs.modal', stopTransport);
                 initUI();
             }
             var bsModal = bootstrap.Modal.getOrCreateInstance(modal);

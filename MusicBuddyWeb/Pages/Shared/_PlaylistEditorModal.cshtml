@@ -78,6 +78,19 @@
                 </div>
             </div>
             <div class="modal-footer pe-footer">
+                <div class="d-flex align-items-center gap-2 pe-transport" id="pe-transport" style="display:none;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-t-prev" title="Previous">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-t-play" title="Play/Pause">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-t-next" title="Next">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                    <input type="range" class="pe-t-seek" id="pe-t-seek" min="0" max="1000" value="0" step="1" disabled title="Seek">
+                    <small class="text-muted text-nowrap" id="pe-t-time">0:00 / 0:00</small>
+                </div>
                 <small class="text-muted me-auto">
                     <i class="bi bi-mouse me-1"></i>Drag entries to reorder, or drag tracks and albums from the Library.
                     <i class="bi bi-lightning-charge-fill ms-2 me-1"></i>Everything saves automatically.

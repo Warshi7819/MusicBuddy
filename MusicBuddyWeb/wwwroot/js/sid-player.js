@@ -248,6 +248,36 @@ var sidPlayer = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
+        },
+
+        getTransportState: function () {
+            var t = document.getElementById('sid-time');
+            var d = document.getElementById('sid-duration');
+            return {
+                title: (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].name : '',
+                duration: d ? d.textContent : '',
+                currentTime: t ? t.textContent : '',
+                playing: playing,
+                seekable: false
+            };
+        },
+
+        playPause: function () {
+            if (!player) return;
+            if (playing) { player.pause(); showPauseState(); }
+            else { player.playcont(); showPlayState(); }
+        },
+
+        prev: function () {
+            var prev = currentIndex - 1;
+            if (prev < 0) prev = playlist.length - 1;
+            loadTrack(prev);
+        },
+
+        next: function () {
+            var next = currentIndex + 1;
+            if (next >= playlist.length) next = 0;
+            loadTrack(next);
         }
     };
 })();

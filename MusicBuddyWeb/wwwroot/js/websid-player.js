@@ -303,6 +303,39 @@ var websidPlayer = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
+        },
+
+        getTransportState: function () {
+            var t = document.getElementById('websid-time');
+            var d = document.getElementById('websid-duration');
+            return {
+                title: (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].name : '',
+                duration: d ? d.textContent : '',
+                currentTime: t ? t.textContent : '',
+                playing: playing,
+                seekable: false
+            };
+        },
+
+        playPause: function () {
+            if (!player) {
+                if (playlist.length > 0) loadTrack(currentIndex >= 0 ? currentIndex : 0);
+                return;
+            }
+            if (playing) { player.pause(); showPauseState(); }
+            else { player.resume(); showPlayState(); }
+        },
+
+        prev: function () {
+            var prev = currentIndex - 1;
+            if (prev < 0) prev = playlist.length - 1;
+            loadTrack(prev);
+        },
+
+        next: function () {
+            var next = currentIndex + 1;
+            if (next >= playlist.length) next = 0;
+            loadTrack(next);
         }
     };
 })();

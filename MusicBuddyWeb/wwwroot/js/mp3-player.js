@@ -246,6 +246,44 @@ var mp3Player = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0, channelCount: 2 });
+        },
+
+        getTransportState: function () {
+            return {
+                title: currentTrack ? currentTrack.name : '',
+                duration: audio.duration || 0,
+                currentTime: audio.currentTime || 0,
+                playing: !audio.paused
+            };
+        },
+
+        seekTo: function (seconds) {
+            if (!audio.duration || isNaN(seconds)) return;
+            audio.currentTime = Math.max(0, Math.min(seconds, audio.duration));
+        },
+
+        playPause: function () {
+            if (!audio.paused) { audio.pause(); return; }
+            var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
+            p.then(function () {
+                if (currentIndex < 0 && playlist.length > 0) {
+                    loadTrack(0);
+                } else {
+                    audio.play().then(showPlayState).catch(function () {});
+                }
+            });
+        },
+
+        prev: function () {
+            var prev = currentIndex - 1;
+            if (prev < 0) prev = playlist.length - 1;
+            loadTrack(prev);
+        },
+
+        next: function () {
+            var next = currentIndex + 1;
+            if (next >= playlist.length) next = 0;
+            loadTrack(next);
         }
     };
 })();
