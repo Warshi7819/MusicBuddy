@@ -11,7 +11,7 @@ var vuMeter = (function () {
     var CANVAS_HEIGHT = METER_HEIGHT + 10;
 
     var TICK_DB = [-60, -50, -40, -30, -20, -10, 0];
-    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'flatgold'];
+    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'greenglow', 'flatgold'];
 
     function clamp01(v) {
         return Math.max(0, Math.min(1, v));
@@ -112,6 +112,25 @@ var vuMeter = (function () {
             pivotGlow: true,
             glowCore: 'rgba(90, 170, 255, 0.58)',
             glowMid: 'rgba(60, 130, 255, 0.2)'
+        },
+        greenglow: {
+            bg: '#0a0e1a',
+            glowBorder: 'rgba(60, 220, 120, 0.3)',
+            bgShadow: 'rgba(40, 180, 90, 0.3)',
+            track: 'rgba(30, 90, 50, 0.18)',
+            seg1: 'rgba(60, 200, 120, 0.35)',
+            seg2: 'rgba(90, 230, 150, 0.55)',
+            seg3: 'rgba(255, 90, 60, 0.6)',
+            tick: 'rgba(170, 255, 200, 0.7)',
+            minorTick: 'rgba(90, 200, 130, 0.3)',
+            label: 'rgba(150, 235, 180, 0.8)',
+            needleGlow: 'rgba(90, 230, 150, 0.8)',
+            needle: '#d9ffeb',
+            needleBlur: 9,
+            pivot: '#8ff0b4',
+            pivotGlow: true,
+            glowCore: 'rgba(90, 230, 150, 0.58)',
+            glowMid: 'rgba(60, 190, 110, 0.2)'
         }
     };
 
