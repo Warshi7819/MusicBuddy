@@ -94,17 +94,8 @@
                     <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;">
                         <option value="">-- All files --</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-create-btn" title="New playlist">
-                        <i class="bi bi-plus"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pm-add-files-btn" title="Add files from browser" disabled>
-                        <i class="bi bi-folder2-open"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="pm-delete-btn" title="Delete playlist" disabled>
-                        <i class="bi bi-trash"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning" id="pm-clear-btn" title="Clear all tracks" disabled>
-                        <i class="bi bi-trash3"></i>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-manage-btn" title="Open playlist manager">
+                        <i class="bi bi-pencil-square"></i>
                     </button>
                 </div>
             </div>
@@ -117,33 +108,38 @@
 @section Scripts {
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
-    <script src="~/js/file-browser.js" asp-append-version="true"></script>
     <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/lib/jsSID.js"></script>
     <script src="~/js/sid-player.js" asp-append-version="true"></script>
+    <script src="~/js/playlist-editor.js" asp-append-version="true"></script>
     <script>
         (function () {
             sidPlayer.init([]);
 
             var select = document.getElementById('pm-playlist-select');
+            var manageBtn = document.getElementById('pm-manage-btn');
 
             playlistManager.init({
                 fileType: 'sid',
                 onPlaylistLoaded: function (data) {
                     if (data && data.tracks && data.tracks.length > 0) {
-                        sidPlayer.loadPlaylist(data.tracks);
+                        sidPlayer.syncPlaylist(data.tracks);
                     } else {
-                        sidPlayer.loadPlaylist([]);
+                        sidPlayer.syncPlaylist([]);
                     }
                 }
             });
 
+            manageBtn.addEventListener('click', function () {
+                playlistEditor.open({ fileType: 'sid' });
+            });
+
             select.addEventListener('change', function () {
                 if (!this.value) {
-                    sidPlayer.loadPlaylist([]);
+                    sidPlayer.syncPlaylist([]);
                 }
             });
         })();
     </script>
-    <partial name="Shared/_FileBrowserModal" />
+    <partial name="Shared/_PlaylistEditorModal" />
 }

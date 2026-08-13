@@ -222,6 +222,20 @@ var mp3Player = (function () {
             playlist = tracks.map(normalizeTrack);
             currentIndex = -1;
             renderPlaylist();
+        },
+
+        syncPlaylist: function (tracks) {
+            var currentPath = (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].path : null;
+            var normalized = tracks.map(normalizeTrack);
+            var newIndex = -1;
+            if (currentPath) {
+                for (var i = 0; i < normalized.length; i++) {
+                    if (normalized[i].path === currentPath) { newIndex = i; break; }
+                }
+            }
+            playlist = normalized;
+            currentIndex = newIndex;
+            renderPlaylist();
         }
     };
 })();

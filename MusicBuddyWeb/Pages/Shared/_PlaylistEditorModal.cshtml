@@ -1,0 +1,89 @@
+<div class="modal fade playlist-editor-modal" id="playlistEditorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 w-100">
+                    <span class="fw-semibold"><i class="bi bi-music-note-list me-2"></i>Playlist Manager</span>
+                    <div class="d-flex align-items-center gap-3 ms-auto">
+                        <span class="small pe-saved-indicator" id="pe-saved-indicator">
+                            <i class="bi bi-check2-circle me-1"></i>Saved
+                        </span>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap pe-plain-wrap" id="pe-plain-wrap">
+                    <select class="form-select form-select-sm pe-playlist-select" id="pe-playlist-select">
+                        <option value="">-- Select playlist --</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="pe-create-btn" title="Create playlist">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-rename-btn" title="Rename playlist" disabled>
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="pe-delete-btn" title="Delete playlist" disabled>
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <span class="badge bg-secondary" id="pe-track-count">0 tracks</span>
+                </div>
+                <div class="pe-name-collapse" id="pe-name-collapse">
+                    <div class="d-flex align-items-center gap-2 w-100" id="pe-name-wrap">
+                    <label class="small text-muted text-nowrap" id="pe-name-label">New playlist name:</label>
+                    <input type="text" class="form-control form-control-sm" id="pe-name-input" maxlength="100" autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-primary" id="pe-name-save">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-name-cancel">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="pe-panes">
+                    <div class="pe-pane pe-playlist-pane">
+                        <div class="pe-pane-header">
+                            <span><i class="bi bi-list-ul me-1"></i>Playlist</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning" id="pe-clear-btn" disabled>
+                                    <i class="bi bi-trash3 me-1"></i>Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-group list-group-flush pe-list" id="pe-tracks"></div>
+                        <div class="pe-empty-hint" id="pe-tracks-empty">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            Drag tracks or albums from the Library into this list
+                        </div>
+                    </div>
+                    <div class="pe-pane pe-library-pane">
+                        <div class="pe-pane-header">
+                            <span><i class="bi bi-folder2-open me-1"></i>Library</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted text-nowrap" id="pe-selected-count">0 selected</small>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-select-all-btn">Select all</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="pe-deselect-all-btn">Deselect all</button>
+                                <button type="button" class="btn btn-sm btn-primary" id="pe-add-selected-btn" disabled>
+                                    <i class="bi bi-plus-lg me-1"></i>Add selected
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pe-pane-header pe-breadcrumb-bar">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0 pe-breadcrumb" id="pe-breadcrumb"></ol>
+                            </nav>
+                        </div>
+                        <div class="list-group list-group-flush pe-list" id="pe-library"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer pe-footer">
+                <small class="text-muted me-auto">
+                    <i class="bi bi-mouse me-1"></i>Drag entries to reorder, or drag tracks and albums from the Library.
+                    <i class="bi bi-lightning-charge-fill ms-2 me-1"></i>Everything saves automatically.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="pe-toast-container" id="pe-toast-container"></div>

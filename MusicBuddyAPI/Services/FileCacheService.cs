@@ -120,6 +120,64 @@ public class FileCacheService
         _logger.LogInformation("Evicted root cache for {FileType}", fileType);
     }
 
+    public async Task<List<FileEntry>> CollectFilesAsync(string relativePath, string fileType)
+    {
+        var rootPath = GetRootPath(fileType);
+        if (string.IsNullOrEmpty(rootPath))
+        {
+            throw new InvalidOperationException($"No root path configured for file type '{fileType}'");
+        }
+
+        var normalizedRelative = relativePath.TrimStart('/').Replace('\\', '/');
+        var fullPath = Path.Combine(rootPath, normalizedRelative.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!Directory.Exists(fullPath))
+        {
+            throw new InvalidOperationException($"Directory does not exist: {relativePath}");
+        }
+
+        var cacheKey = $"{CacheKey(fullPath, fileType)}:collect";
+        if (_cache.TryGetValue(cacheKey, out List<FileEntry>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var files = await CollectFromDirectoryAsync(fullPath, fileType, normalizedRelative);
+        files = files.OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase).ToList();
+        _cache.Set(cacheKey, files, _defaultDuration);
+
+        _logger.LogInformation("Collected {Count} files under {Path} (type={FileType})",
+            files.Count, relativePath, fileType);
+        return files;
+    }
+
+    private Task<List<FileEntry>> CollectFromDirectoryAsync(string fullPath, string fileType, string relativePrefix)
+    {
+        var urlPrefix = GetUrlPrefix(fileType);
+
+        return Task.Run(() =>
+        {
+            var files = new List<FileEntry>();
+            var searchPattern = fileType.ToLowerInvariant() == "mp3" ? "*.mp3" : "*.sid";
+
+            foreach (var file in Directory.EnumerateFiles(fullPath, searchPattern, SearchOption.AllDirectories))
+            {
+                var fileInfo = new FileInfo(file);
+                var relative = Path.GetRelativePath(fullPath, file).Replace('\\', '/');
+                files.Add(new FileEntry
+                {
+                    Name = Path.GetFileNameWithoutExtension(file),
+                    Path = urlPrefix + "/" + (string.IsNullOrEmpty(relativePrefix) ? relative : relativePrefix.TrimEnd('/') + "/" + relative),
+                    Size = fileInfo.Length,
+                    IsDirectory = false,
+                    ChannelCount = fileType == "mp3" ? ReadChannelCount(file) : 2
+                });
+            }
+
+            return files;
+        });
+    }
+
     public void RefreshCache(string fullPath, string fileType)
     {
         var cacheKey = CacheKey(fullPath, fileType);

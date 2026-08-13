@@ -43,4 +43,30 @@ public class FileBrowserController : ControllerBase
             return StatusCode(500, new { message = "Error browsing directory", detail = ex.Message });
         }
     }
+
+    [HttpGet("collect")]
+    public async Task<ActionResult<List<FileEntry>>> Collect(
+        [FromQuery] string path = "",
+        [FromQuery] string type = "sid")
+    {
+        _logger.LogInformation("File collect request: type={FileType}, path={Path}", type, path);
+
+        try
+        {
+            var files = await _cache.CollectFilesAsync(path, type);
+            _logger.LogInformation("File collect OK: type={FileType}, path={Path}, files={FileCount}",
+                type, path, files.Count);
+            return Ok(files);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "File collect bad request: type={FileType}, path={Path}", type, path);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "File collect error: type={FileType}, path={Path}", type, path);
+            return StatusCode(500, new { message = "Error collecting files", detail = ex.Message });
+        }
+    }
 }
