@@ -6,6 +6,7 @@ var sidPlayer = (function () {
     var subtune = 0;
     var updateInterval = null;
     var preferredModel = null;
+    var onTrackEnded = null;
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -135,6 +136,7 @@ var sidPlayer = (function () {
                 }
             });
             player.setendcallback(function () {
+                if (onTrackEnded && onTrackEnded()) return;
                 var next = currentIndex + 1;
                 if (next >= playlist.length) next = 0;
                 loadTrack(next);
@@ -248,6 +250,10 @@ var sidPlayer = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
+        },
+
+        setOnTrackEnded: function (fn) {
+            onTrackEnded = fn;
         },
 
         getTransportState: function () {

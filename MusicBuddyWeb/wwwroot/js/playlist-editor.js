@@ -73,8 +73,17 @@ var playlistEditor = (function () {
             if (previewContext[i] === path) { previewIndex = i; break; }
         }
         var player = getPlayer();
-        if (player && player.playByPath) player.playByPath(path);
+        if (player && player.playByPath) {
+            if (player.setOnTrackEnded) player.setOnTrackEnded(handleTrackEnded);
+            player.playByPath(path);
+        }
         setPlayingRow(path);
+    }
+
+    function handleTrackEnded() {
+        if (previewIndex < 0) return false;
+        transportNext();
+        return true;
     }
 
     function transportPrev() {
@@ -887,7 +896,11 @@ var playlistEditor = (function () {
                     loadAll();
                     startTransport();
                 });
-                modal.addEventListener('hidden.bs.modal', stopTransport);
+                modal.addEventListener('hidden.bs.modal', function () {
+                    stopTransport();
+                    var p = getPlayer();
+                    if (p && p.setOnTrackEnded) p.setOnTrackEnded(null);
+                });
                 initUI();
             }
             var bsModal = bootstrap.Modal.getOrCreateInstance(modal);

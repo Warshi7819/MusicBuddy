@@ -7,6 +7,7 @@ var websidPlayer = (function () {
     var backend = null;
     var preferredModel = null;
     var updateInterval = null;
+    var onTrackEnded = null;
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -98,6 +99,7 @@ var websidPlayer = (function () {
 
             backend = new SIDBackendAdapter();
             ScriptNodePlayer.initialize(backend, function () {
+                if (onTrackEnded && onTrackEnded()) return;
                 var next = currentIndex + 1;
                 if (next >= playlist.length) next = 0;
                 loadTrack(next);
@@ -303,6 +305,10 @@ var websidPlayer = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0 });
+        },
+
+        setOnTrackEnded: function (fn) {
+            onTrackEnded = fn;
         },
 
         getTransportState: function () {

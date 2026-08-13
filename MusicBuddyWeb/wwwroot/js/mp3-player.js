@@ -11,6 +11,7 @@ var mp3Player = (function () {
     var vuInterval = null;
     var source = null;
     var currentTrack = null;
+    var onTrackEnded = null;
 
     function formatTime(sec) {
         if (isNaN(sec)) return '0:00';
@@ -131,6 +132,7 @@ var mp3Player = (function () {
                 document.getElementById('mp3-duration').textContent = formatTime(audio.duration);
             });
             audio.addEventListener('ended', function () {
+                if (onTrackEnded && onTrackEnded()) return;
                 var next = currentIndex + 1;
                 if (next >= playlist.length) next = 0;
                 loadTrack(next);
@@ -246,6 +248,10 @@ var mp3Player = (function () {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
             playFile({ name: path.split('/').pop(), path: path, size: 0, channelCount: 2 });
+        },
+
+        setOnTrackEnded: function (fn) {
+            onTrackEnded = fn;
         },
 
         getTransportState: function () {
