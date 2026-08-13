@@ -33,7 +33,7 @@ var vuMeter = (function () {
         return Math.max(TICK_DB[0], Math.min(0, db));
     }
 
-    function drawMeter(cx, level, label) {
+    function drawMeter(cx, level) {
         var baseX = cx - METER_WIDTH / 2;
         var baseY = 5;
 
@@ -139,12 +139,6 @@ var vuMeter = (function () {
         ctx.fillStyle = '#8ab4f0';
         ctx.fill();
 
-        // label
-        ctx.font = 'bold 10px system-ui, sans-serif';
-        ctx.fillStyle = 'rgba(100, 170, 255, 0.6)';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, cx, baseY + METER_HEIGHT - 2);
-
         ctx.restore();
     }
 
@@ -179,8 +173,8 @@ var vuMeter = (function () {
 
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        drawMeter(10 + METER_WIDTH / 2, currentLeft, 'L');
-        drawMeter(10 + METER_WIDTH + METER_GAP + METER_WIDTH / 2, currentRight, 'R');
+        drawMeter(10 + METER_WIDTH / 2, currentLeft);
+        drawMeter(10 + METER_WIDTH + METER_GAP + METER_WIDTH / 2, currentRight);
 
         animFrame = requestAnimationFrame(animate);
     }
