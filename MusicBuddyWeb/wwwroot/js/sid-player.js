@@ -54,8 +54,12 @@ var sidPlayer = (function () {
     function loadTrack(index) {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
+        renderPlaylist();
+        playFile(playlist[index]);
+    }
+
+    function playFile(file) {
         subtune = 0;
-        var file = playlist[index];
         document.getElementById('sid-title').textContent = file.name;
         document.getElementById('sid-author').textContent = '';
         document.getElementById('sid-info').textContent = 'Loading...';
@@ -63,7 +67,6 @@ var sidPlayer = (function () {
         document.getElementById('sid-duration').textContent = '';
         document.getElementById('sid-seek-fill').style.width = '0%';
         updateSubtuneUI();
-        renderPlaylist();
         player.loadstart(file.path, subtune);
     }
 
@@ -238,6 +241,13 @@ var sidPlayer = (function () {
             playlist = normalized;
             currentIndex = newIndex;
             renderPlaylist();
+        },
+
+        playByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) { loadTrack(i); return; }
+            }
+            playFile({ name: path.split('/').pop(), path: path, size: 0 });
         }
     };
 })();

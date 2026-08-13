@@ -53,6 +53,16 @@ var playlistEditor = (function () {
         localStorage.setItem('musicbuddy_last_playlist_' + fileType, currentPlaylistId || '');
     }
 
+    function hasPlayer() {
+        return fileType === 'mp3' ? typeof mp3Player !== 'undefined' :
+               fileType === 'sid' ? typeof sidPlayer !== 'undefined' : false;
+    }
+
+    function playPath(path) {
+        var player = fileType === 'mp3' ? mp3Player : sidPlayer;
+        if (player && player.playByPath) player.playByPath(path);
+    }
+
     function syncPlayer() {
         if (typeof playlistManager !== 'undefined' && playlistManager.selectPlaylist) {
             playlistManager.selectPlaylist(currentPlaylistId);
@@ -205,6 +215,7 @@ var playlistEditor = (function () {
             item.innerHTML =
                 '<i class="bi bi-grip-vertical text-muted me-2"></i>' +
                 '<span class="text-muted me-2">' + (i + 1) + '.</span>' +
+                (hasPlayer() ? '<button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"><i class="bi bi-play-circle"></i></button>' : '') +
                 '<span class="text-truncate flex-grow-1">' + escapeHtml(t.fileName) + '</span>' +
                 '<small class="text-nowrap text-muted ms-2">' + formatSize(t.fileSize) + '</small>' +
                 '<button type="button" class="btn btn-sm btn-outline-danger ms-2 pe-remove-btn" title="Remove"><i class="bi bi-x-lg"></i></button>';
@@ -488,6 +499,7 @@ var playlistEditor = (function () {
                 row.innerHTML =
                     '<input type="checkbox" class="form-check-input me-2 pe-check" aria-label="Select file">' +
                     '<i class="bi bi-file-earmark-music text-primary me-2"></i>' +
+                    (hasPlayer() ? '<button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"><i class="bi bi-play-circle"></i></button>' : '') +
                     '<span class="text-truncate flex-grow-1">' + escapeHtml(file.name) + '</span>' +
                     '<small class="text-nowrap text-muted ms-2">' + formatSize(file.size) + '</small>';
                 row.querySelector('.pe-check').checked = selection.some(function (s) { return s.kind === 'file' && s.path === file.path; });
@@ -628,6 +640,13 @@ var playlistEditor = (function () {
 
         if (tracksEl) {
             tracksEl.addEventListener('click', function (e) {
+                var playBtn = e.target.closest('.pe-play-btn');
+                if (playBtn) {
+                    e.stopPropagation();
+                    var prow = playBtn.closest('.pe-track-row');
+                    if (prow) playPath(prow.dataset.path);
+                    return;
+                }
                 var btn = e.target.closest('.pe-remove-btn');
                 if (!btn) return;
                 var row = btn.closest('.pe-track-row');
@@ -709,15 +728,18 @@ var playlistEditor = (function () {
                 dragPayload = null;
             });
             libraryEl.addEventListener('click', function (e) {
+                var playBtn = e.target.closest('.pe-play-btn');
+                if (playBtn) {
+                    e.stopPropagation();
+                    var prow = playBtn.closest('.pe-library-row');
+                    if (prow) playPath(prow.dataset.path);
+                    return;
+                }
                 var row = e.target.closest('.pe-library-row');
                 if (!row) return;
                 if (e.target.closest('.form-check-input')) return;
                 if (row.dataset.kind === 'album') {
                     navigateTo(row.dataset.path);
-                } else {
-                    var cb = row.querySelector('.pe-check');
-                    cb.checked = !cb.checked;
-                    syncRowSelection(row);
                 }
             });
             libraryEl.addEventListener('change', function (e) {

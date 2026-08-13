@@ -51,14 +51,17 @@ var mp3Player = (function () {
     function loadTrack(index) {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
-        var file = playlist[index];
+        renderPlaylist();
+        playFile(playlist[index]);
+    }
+
+    function playFile(file) {
         currentTrack = file;
         document.getElementById('mp3-title').textContent = file.name;
         document.getElementById('mp3-artist').textContent = '';
         document.getElementById('mp3-time').textContent = '0:00';
         document.getElementById('mp3-duration').textContent = '0:00';
         document.getElementById('mp3-seek-fill').style.width = '0%';
-        renderPlaylist();
         loadAlbumArt(file.path);
         var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
         p.then(function () {
@@ -236,6 +239,13 @@ var mp3Player = (function () {
             playlist = normalized;
             currentIndex = newIndex;
             renderPlaylist();
+        },
+
+        playByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) { loadTrack(i); return; }
+            }
+            playFile({ name: path.split('/').pop(), path: path, size: 0, channelCount: 2 });
         }
     };
 })();

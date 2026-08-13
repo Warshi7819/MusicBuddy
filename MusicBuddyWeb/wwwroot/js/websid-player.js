@@ -112,14 +112,17 @@ var websidPlayer = (function () {
     function loadTrack(index) {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
-        var file = playlist[index];
+        renderPlaylist();
+        playFile(playlist[index]);
+    }
+
+    function playFile(file) {
         document.getElementById('websid-title').textContent = file.name;
         document.getElementById('websid-author').textContent = '';
         document.getElementById('websid-info').textContent = 'Loading...';
         document.getElementById('websid-time').textContent = '0:00';
         document.getElementById('websid-duration').textContent = '';
         document.getElementById('websid-seek-fill').style.width = '0%';
-        renderPlaylist();
 
         var options = {};
         options.track = -1;
@@ -293,6 +296,13 @@ var websidPlayer = (function () {
             playlist = normalized;
             currentIndex = newIndex;
             renderPlaylist();
+        },
+
+        playByPath: function (path) {
+            for (var i = 0; i < playlist.length; i++) {
+                if (playlist[i].path === path) { loadTrack(i); return; }
+            }
+            playFile({ name: path.split('/').pop(), path: path, size: 0 });
         }
     };
 })();
