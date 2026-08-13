@@ -129,6 +129,28 @@ public class FileCacheService
 
     public TimeSpan GetCurrentDuration() => _defaultDuration;
 
+    public string? ResolveFilePath(string urlPath)
+    {
+        if (string.IsNullOrEmpty(urlPath)) return null;
+
+        var normalized = urlPath.Replace('\\', '/').TrimStart('/');
+
+        foreach (var (urlPrefix, rootPath) in new[] { (_mp3UrlPrefix, _mp3Root), (_sidUrlPrefix, _sidRoot) })
+        {
+            if (string.IsNullOrEmpty(urlPrefix)) continue;
+            var prefix = urlPrefix.TrimStart('/').TrimEnd('/');
+            if (!normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var relative = normalized[prefix.Length..].TrimStart('/');
+            if (string.IsNullOrEmpty(relative)) continue;
+
+            var fullPath = Path.Combine(rootPath, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.File.Exists(fullPath)) return fullPath;
+        }
+
+        return null;
+    }
+
     private async Task<DirectoryListing> ScanDirectoryAsync(string fullPath, string relativePath, string fileType)
     {
         var urlPrefix = GetUrlPrefix(fileType);

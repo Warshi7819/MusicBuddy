@@ -18,8 +18,17 @@
 
 <div class="row">
     <div class="col-lg-8">
-        <div class="d-flex justify-content-center mb-3">
-            <canvas id="vu-canvas"></canvas>
+        <div class="d-flex align-items-center justify-content-between mb-3 mp3-vu-row">
+            <div class="mp3-album-art" id="mp3-album-art">
+                <div class="mp3-art-placeholder" id="mp3-art-placeholder">
+                    <i class="bi bi-music-note"></i>
+                    <small>Album Art</small>
+                </div>
+                <img id="mp3-art-img" alt="Album art" style="display:none;">
+            </div>
+            <div class="ms-auto">
+                <canvas id="vu-canvas"></canvas>
+            </div>
         </div>
         <div class="card shadow-sm mb-4">
             <div class="card-body">

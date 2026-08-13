@@ -59,12 +59,38 @@ var mp3Player = (function () {
         document.getElementById('mp3-duration').textContent = '0:00';
         document.getElementById('mp3-seek-fill').style.width = '0%';
         renderPlaylist();
+        loadAlbumArt(file.path);
         var p = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
         p.then(function () {
             audio.src = file.path;
             audio.load();
             audio.play().then(showPlayState).catch(function () {});
         });
+    }
+
+    function loadAlbumArt(filePath) {
+        var img = document.getElementById('mp3-art-img');
+        var placeholder = document.getElementById('mp3-art-placeholder');
+        if (!img || !placeholder) return;
+
+        img.style.display = 'none';
+        placeholder.style.display = '';
+
+        fetch('/api/albumart?path=' + encodeURIComponent(filePath))
+            .then(function (res) {
+                if (!res.ok || res.status === 204) return null;
+                return res.blob();
+            })
+            .then(function (blob) {
+                if (!blob) return;
+                var url = URL.createObjectURL(blob);
+                img.onload = function () {
+                    placeholder.style.display = 'none';
+                    img.style.display = '';
+                };
+                img.src = url;
+            })
+            .catch(function () {});
     }
 
     function normalizeTrack(track) {
