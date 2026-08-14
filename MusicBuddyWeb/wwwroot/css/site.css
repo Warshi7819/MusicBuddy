@@ -163,6 +163,36 @@ body {
   cursor: pointer;
 }
 
+/* Album overview */
+.album-art-wrap {
+  background: var(--bs-tertiary-bg, #f8f9fa);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.album-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-art-placeholder {
+  color: var(--bs-secondary-color, #6c757d);
+  opacity: 0.5;
+}
+
+.album-card {
+  cursor: default;
+  transition: box-shadow 0.15s;
+}
+
+.album-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
 #fb-listing .list-group-item label {
   margin-bottom: 0;
   cursor: pointer;

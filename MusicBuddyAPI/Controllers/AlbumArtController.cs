@@ -49,11 +49,22 @@ public class AlbumArtController : ControllerBase
             using var tagFile = TagLib.File.Create(fullPath);
             if (tagFile.Tag.Pictures.Length == 0)
             {
-                _memoryCache.Set(cacheKey, Array.Empty<byte>(), new MemoryCacheEntryOptions
+                var folderBytes = FindFolderArt(fullPath);
+                if (folderBytes is null)
+                {
+                    _memoryCache.Set(cacheKey, Array.Empty<byte>(), new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+                    });
+                    return NoContent();
+                }
+
+                _memoryCache.Set(cacheKey, folderBytes, new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
                 });
-                return NoContent();
+                _logger.LogDebug("Album art (folder fallback) returned for {Path} ({Size} bytes)", path, folderBytes.Length);
+                return File(folderBytes, "image/jpeg");
             }
 
             var picture = tagFile.Tag.Pictures[0];
@@ -73,5 +84,19 @@ public class AlbumArtController : ControllerBase
             _logger.LogError(ex, "Error reading album art for {Path}", path);
             return NoContent();
         }
+    }
+
+    private static byte[]? FindFolderArt(string filePath)
+    {
+        var dir = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+
+        var match = Directory.EnumerateFiles(dir, "AlbumArt_*_Large.*")
+            .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                     || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+        return match is null ? null : System.IO.File.ReadAllBytes(match);
     }
 }

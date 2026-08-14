@@ -119,7 +119,8 @@ app.Map("/api/{**path}", async (HttpContext context, string path) =>
         if (response.Content.Headers.ContentType != null)
             context.Response.ContentType = response.Content.Headers.ContentType.ToString();
 
-        await response.Content.CopyToAsync(context.Response.Body);
+        if ((int)response.StatusCode != 204)
+            await response.Content.CopyToAsync(context.Response.Body);
     }
     catch (Exception ex)
     {
