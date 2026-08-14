@@ -264,6 +264,23 @@ var albums = (function () {
         var empty = document.getElementById('albums-empty');
         var grid = document.getElementById('albums-grid');
 
+        var refreshBtn = document.getElementById('albums-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function () {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Refreshing...';
+                fetch('/api/albums/refresh', { method: 'POST' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Refresh failed');
+                        window.location.reload();
+                    })
+                    .catch(function () {
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh';
+                    });
+            });
+        }
+
         fetch('/api/albums')
             .then(function (res) { return res.json(); })
             .then(function (data) {

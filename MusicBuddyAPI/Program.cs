@@ -13,6 +13,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<FileCacheService>();
+builder.Services.AddSingleton<AlbumCatalogService>();
+builder.Services.AddHostedService<AlbumCacheWarmer>();
 
 builder.Services.AddDbContext<MusicBuddyDbContext>(options =>
     options.UseSqlite("Data Source=musicbuddy.db"));
