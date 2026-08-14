@@ -12,13 +12,15 @@
 </p>
 
 <div class="row">
-    @foreach (var (id, name, icon) in new[] {
-        ("classic", "Classic", "bi-speedometer2"),
-        ("glow", "Yellow Glow", "bi-lightbulb"),
-        ("blueglow", "Blue Glow", "bi-droplet"),
-        ("greenglow", "Green Glow", "bi-leaf"),
-        ("flatgold", "Flat Gold", "bi-layout-three-columns"),
-        ("ledbar", "LED Bar", "bi-bar-chart")
+    @foreach (var (id, name) in new[] {
+        ("classic", "Classic"),
+        ("glow", "Yellow Glow"),
+        ("blueglow", "Blue Glow"),
+        ("greenglow", "Green Glow"),
+        ("flatgold", "Flat Gold"),
+        ("ledbar", "LED Bar"),
+        ("amberglow", "Amber Glow"),
+        ("oldschool", "Old School")
     })
     {
         var isActive = Model.CurrentStyle == id;
@@ -30,7 +32,7 @@
                         {
                             <i class="bi bi-check-circle-fill text-primary me-1"></i>
                         }
-                        <i class="bi @icon text-warning me-1"></i> @name
+                        @name
                     </h5>
                     <div class="vu-preview-wrap mb-3">
                         <canvas class="vu-preview-canvas" id="vu-preview-@id"></canvas>
@@ -64,7 +66,9 @@
                 { id: 'vu-preview-blueglow', style: 'blueglow' },
                 { id: 'vu-preview-greenglow', style: 'greenglow' },
                 { id: 'vu-preview-flatgold', style: 'flatgold' },
-                { id: 'vu-preview-ledbar', style: 'ledbar' }
+                { id: 'vu-preview-ledbar', style: 'ledbar' },
+                { id: 'vu-preview-amberglow', style: 'amberglow' },
+                { id: 'vu-preview-oldschool', style: 'oldschool' }
             ];
             var instances = [];
             specs.forEach(function (s) {

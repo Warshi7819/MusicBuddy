@@ -6,7 +6,7 @@ namespace MusicBuddyWeb.Pages.Settings;
 public class VuMetersModel : PageModel
 {
     private const string CookieName = "MusicBuddyVUMeter";
-    private static readonly string[] AllowedStyles = ["classic", "glow", "blueglow", "greenglow", "flatgold", "ledbar"];
+    private static readonly string[] AllowedStyles = ["classic", "glow", "blueglow", "greenglow", "flatgold", "ledbar", "amberglow", "oldschool"];
 
     public string CurrentStyle { get; set; } = "classic";
 

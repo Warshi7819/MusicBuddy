@@ -11,7 +11,7 @@ var vuMeter = (function () {
     var CANVAS_HEIGHT = METER_HEIGHT + 10;
 
     var TICK_DB = [-60, -50, -40, -30, -20, -10, 0];
-    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'greenglow', 'flatgold', 'ledbar'];
+    var VALID_STYLES = ['classic', 'glow', 'blueglow', 'greenglow', 'flatgold', 'ledbar', 'amberglow', 'oldschool'];
 
     function clamp01(v) {
         return Math.max(0, Math.min(1, v));
@@ -131,6 +131,25 @@ var vuMeter = (function () {
             pivotGlow: true,
             glowCore: 'rgba(90, 230, 150, 0.58)',
             glowMid: 'rgba(60, 190, 110, 0.2)'
+        },
+        amberglow: {
+            bg: '#1a1208',
+            glowBorder: 'rgba(220, 160, 50, 0.35)',
+            bgShadow: 'rgba(200, 140, 30, 0.4)',
+            track: 'rgba(160, 110, 20, 0.15)',
+            seg1: 'rgba(220, 170, 60, 0.35)',
+            seg2: 'rgba(240, 190, 70, 0.5)',
+            seg3: 'rgba(230, 80, 30, 0.6)',
+            tick: 'rgba(230, 190, 100, 0.75)',
+            minorTick: 'rgba(180, 140, 60, 0.3)',
+            label: 'rgba(230, 190, 100, 0.85)',
+            needleGlow: 'rgba(230, 180, 60, 0.8)',
+            needle: '#ffe0a0',
+            needleBlur: 6,
+            pivot: '#d4a030',
+            pivotGlow: true,
+            glowCore: 'rgba(220, 160, 50, 0.5)',
+            glowMid: 'rgba(180, 120, 30, 0.2)'
         }
     };
 
@@ -341,6 +360,106 @@ var vuMeter = (function () {
         c.restore();
     }
 
+    // ---- old school flat style (oldschool) ----
+
+    function drawOldSchoolMeter(c, cx, level) {
+        var baseX = cx - METER_WIDTH / 2;
+        var baseY = 5;
+        var pivotX = cx;
+        var pivotY = baseY + METER_HEIGHT - 6;
+        var tickY = baseY + 42;
+        var tickLen = 12;
+        var minorTickLen = 6;
+
+        c.save();
+
+        var bgGrad = c.createLinearGradient(baseX, baseY, baseX, baseY + METER_HEIGHT);
+        bgGrad.addColorStop(0, '#f7f0d8');
+        bgGrad.addColorStop(0.35, '#f3ead0');
+        bgGrad.addColorStop(1, '#e8dfc5');
+        c.fillStyle = bgGrad;
+        roundRect(c, baseX, baseY, METER_WIDTH, METER_HEIGHT, 5);
+        c.fill();
+
+        c.strokeStyle = 'rgba(180, 140, 60, 0.5)';
+        c.lineWidth = 1.5;
+        roundRect(c, baseX + 0.5, baseY + 0.5, METER_WIDTH - 1, METER_HEIGHT - 1, 5);
+        c.stroke();
+
+        var topGlow = c.createLinearGradient(baseX, baseY, baseX, baseY + 40);
+        topGlow.addColorStop(0, 'rgba(255, 220, 140, 0.25)');
+        topGlow.addColorStop(1, 'rgba(255, 220, 140, 0)');
+        c.fillStyle = topGlow;
+        c.fillRect(baseX, baseY, METER_WIDTH, 40);
+
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+
+        for (var i = 0; i < TICK_DB.length; i++) {
+            var db = TICK_DB[i];
+            var t = (db - TICK_DB[0]) / (TICK_DB[TICK_DB.length - 1] - TICK_DB[0]);
+            var x = baseX + 14 + t * (METER_WIDTH - 28);
+
+            var isRed = (db === -10 || db === 0);
+            var tickColor = isRed ? '#c03030' : '#1a1510';
+            var labelColor = isRed ? '#c03030' : '#1a1510';
+
+            var angleFromPivot = Math.atan2(tickY - pivotY, x - pivotX);
+            var cos = Math.cos(angleFromPivot);
+            var sin = Math.sin(angleFromPivot);
+
+            c.beginPath();
+            c.moveTo(x - cos * tickLen / 2, tickY - sin * tickLen / 2);
+            c.lineTo(x + cos * tickLen / 2, tickY + sin * tickLen / 2);
+            c.strokeStyle = tickColor;
+            c.lineWidth = isRed ? 1.8 : 1.2;
+            c.stroke();
+
+            if (i < TICK_DB.length - 1) {
+                for (var m = 1; m < 5; m++) {
+                    var minordb = db + m * 2.5;
+                    var mt = (minordb - TICK_DB[0]) / (TICK_DB[TICK_DB.length - 1] - TICK_DB[0]);
+                    var mx = baseX + 14 + mt * (METER_WIDTH - 28);
+                    var mAngle = Math.atan2(tickY - pivotY, mx - pivotX);
+                    var mcos = Math.cos(mAngle);
+                    var msin = Math.sin(mAngle);
+                    c.beginPath();
+                    c.moveTo(mx - mcos * minorTickLen / 2, tickY - msin * minorTickLen / 2);
+                    c.lineTo(mx + mcos * minorTickLen / 2, tickY + msin * minorTickLen / 2);
+                    c.strokeStyle = 'rgba(30, 25, 15, 0.25)';
+                    c.lineWidth = 0.6;
+                    c.stroke();
+                }
+            }
+
+            var lbl = db === 0 ? '0' : db.toString();
+            c.font = '9px system-ui, sans-serif';
+            c.fillStyle = labelColor;
+            c.fillText(lbl, x, tickY - 14);
+        }
+
+        var curDb = levelToDb(level);
+        var curT = (curDb - TICK_DB[0]) / (TICK_DB[TICK_DB.length - 1] - TICK_DB[0]);
+        var needleX = baseX + 14 + curT * (METER_WIDTH - 28);
+
+        c.shadowColor = 'rgba(40, 30, 15, 0.3)';
+        c.shadowBlur = 4;
+        c.strokeStyle = '#2a2018';
+        c.lineWidth = 1.3;
+        c.beginPath();
+        c.moveTo(pivotX, pivotY);
+        c.lineTo(needleX, tickY);
+        c.stroke();
+        c.shadowBlur = 0;
+
+        c.beginPath();
+        c.arc(pivotX, pivotY, 3, 0, 2 * Math.PI);
+        c.fillStyle = '#2a2018';
+        c.fill();
+
+        c.restore();
+    }
+
     // ---- LED bar style (ledbar) ----
 
     var LED_SEGMENTS = 24;
@@ -440,6 +559,9 @@ var vuMeter = (function () {
             } else if (state.style === 'ledbar') {
                 drawLedBar(c, LED_BAR_Y1, state.currentLeft);
                 drawLedBar(c, LED_BAR_Y2, state.currentRight);
+            } else if (state.style === 'oldschool') {
+                drawOldSchoolMeter(c, 10 + METER_WIDTH / 2, state.currentLeft);
+                drawOldSchoolMeter(c, 10 + METER_WIDTH + METER_GAP + METER_WIDTH / 2, state.currentRight);
             } else {
                 var palette = ARC_PALETTES[state.style];
                 drawArcMeter(c, 10 + METER_WIDTH / 2, state.currentLeft, palette);
