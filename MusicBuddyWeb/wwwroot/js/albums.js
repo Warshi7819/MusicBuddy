@@ -158,28 +158,28 @@ var albums = (function () {
             subtitle.textContent = album.trackCount + ' track' + (album.trackCount !== 1 ? 's' : '');
 
             var useBtn = document.createElement('button');
-            useBtn.className = 'btn btn-outline-secondary btn-sm mt-2 d-none';
+            useBtn.className = 'btn btn-outline-secondary btn-sm mt-2 d-none album-art-btn';
             useBtn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
             useBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 artMap[artist.path] = album.path;
                 setArtistArtMap(artMap);
 
-                var artistImg = document.querySelector('#albums-grid .album-art');
-                if (artistImg && album.firstTrackPath) {
-                    fetchAlbumArt(album.firstTrackPath, artistImg, artistImg.previousElementSibling);
+                var buttons = grid.querySelectorAll('.album-art-btn');
+                for (var i = 0; i < buttons.length; i++) {
+                    var btn = buttons[i];
+                    if (btn === useBtn) {
+                        btn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
+                        btn.innerHTML = '<i class="bi bi-check me-1"></i>Selected';
+                    } else if (btn.classList.contains('btn-success')) {
+                        btn.className = 'btn btn-outline-secondary btn-sm mt-2 album-art-btn';
+                        btn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
+                    }
                 }
-
-                useBtn.className = 'btn btn-success btn-sm mt-2';
-                useBtn.innerHTML = '<i class="bi bi-check me-1"></i>Selected';
-                setTimeout(function () {
-                    useBtn.className = 'btn btn-outline-secondary btn-sm mt-2';
-                    useBtn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
-                }, 1500);
             });
 
             if (artMap[artist.path] === album.path) {
-                useBtn.className = 'btn btn-success btn-sm mt-2';
+                useBtn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
                 useBtn.innerHTML = '<i class="bi bi-check me-1"></i>Selected';
             }
 
