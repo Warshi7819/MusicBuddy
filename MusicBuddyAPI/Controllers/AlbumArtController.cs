@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using MusicBuddyAPI.Services;
+using System.IO.Enumeration;
 
 namespace MusicBuddyAPI.Controllers;
 
@@ -89,14 +90,35 @@ public class AlbumArtController : ControllerBase
     private static byte[]? FindFolderArt(string filePath)
     {
         var dir = Path.GetDirectoryName(filePath);
-        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+        {
+            return null;
+        } 
 
-        var match = Directory.EnumerateFiles(dir, "AlbumArt_*_Large.*")
-            .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                     || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
+        string[] patterns =
+        {
+            "AlbumArt_*_Large.jpg",
+            "Cover.jpg",
+            "Folder.jpg"
+        };
 
-        return match is null ? null : System.IO.File.ReadAllBytes(match);
+        var files = Directory.EnumerateFiles(dir).ToList();
+
+        bool HasMatch(string file, string pattern)
+        {
+            return FileSystemName.MatchesSimpleExpression(
+                pattern,
+                Path.GetFileName(file),
+                ignoreCase: true
+            );
+        }
+
+        string? firstMatch =
+            patterns
+                .SelectMany(pattern =>
+                    files.Where(f => HasMatch(f, pattern)))
+                .FirstOrDefault();
+
+        return firstMatch is null ? null : System.IO.File.ReadAllBytes(firstMatch);
     }
 }
