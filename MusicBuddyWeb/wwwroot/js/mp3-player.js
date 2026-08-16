@@ -179,7 +179,7 @@ var mp3Player = (function () {
                     } else {
                         vuMeter.setLevels(0, 0);
                     }
-                }, 50);
+                }, 16);
             }
 
             startVu();
