@@ -169,7 +169,7 @@ var sidPlayer = (function () {
                 } else {
                     vuMeter.setLevels(0, 0);
                 }
-            }, 50);
+            }, 16);
 
             document.getElementById('sid-play').addEventListener('click', function () {
                 if (currentIndex >= 0 && !tuneLoaded) { loadTrack(currentIndex); return; }

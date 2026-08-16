@@ -279,7 +279,7 @@ var websidPlayer = (function () {
                 } else {
                     vuMeter.setLevels(0, 0);
                 }
-            }, 50);
+            }, 16);
         },
 
         loadPlaylist: function (tracks) {
