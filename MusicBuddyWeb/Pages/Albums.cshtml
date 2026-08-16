@@ -36,6 +36,32 @@
                 </div>
             </div>
         </div>
+        <div class="card shadow-sm mb-3 d-none" id="album-player-bar">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="alb-prev" title="Previous track">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" id="alb-play" title="Play">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="alb-pause" title="Pause" style="display:none;">
+                        <i class="bi bi-pause-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="alb-next" title="Next track">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                    <span class="text-truncate small fw-semibold" id="alb-now-title" style="min-width:0;"></span>
+                    <span class="text-muted small flex-shrink-0" id="alb-time">0:00</span>
+                    <div class="flex-grow-1">
+                        <div class="progress" style="height: 4px; cursor: pointer;" id="alb-seek-bar">
+                            <div class="progress-bar bg-primary" id="alb-seek-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <span class="text-muted small flex-shrink-0" id="alb-duration">0:00</span>
+                </div>
+            </div>
+        </div>
         <div class="card shadow-sm">
             <div class="list-group list-group-flush" id="track-list"></div>
         </div>
@@ -53,6 +79,10 @@
             var selectedArtist = @Html.Raw(Model.SelectedArtist != null ? $"\"{Model.SelectedArtist}\"" : "null");
             var selectedAlbum = @Html.Raw(Model.SelectedAlbum != null ? $"\"{Model.SelectedAlbum}\"" : "null");
             albums.init(selectedArtist, selectedAlbum);
+
+            window.addEventListener('beforeunload', function () {
+                if (typeof albums.stopPlayer === 'function') albums.stopPlayer();
+            });
         })();
     </script>
 }

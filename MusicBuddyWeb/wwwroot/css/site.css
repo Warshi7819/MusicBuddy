@@ -193,6 +193,22 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
+#albums-track-view {
+  margin-bottom: 1.5rem;
+}
+
+#album-player-bar .progress {
+  height: 4px;
+}
+
+#album-player-bar:hover .progress {
+  height: 8px !important;
+}
+
+#alb-seek-bar:hover .progress-bar {
+  transition: height 0.15s ease;
+}
+
 #fb-listing .list-group-item label {
   margin-bottom: 0;
   cursor: pointer;

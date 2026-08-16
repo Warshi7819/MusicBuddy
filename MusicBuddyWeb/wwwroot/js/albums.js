@@ -1,4 +1,145 @@
 var albums = (function () {
+    var albumPlayer = (function () {
+        var audio = new Audio();
+        var tracks = [];
+        var currentIndex = -1;
+        var playing = false;
+
+        function escapeHtml(s) {
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(s));
+            return d.innerHTML;
+        }
+
+        function formatTime(sec) {
+            if (isNaN(sec)) return '0:00';
+            var m = Math.floor(sec / 60);
+            var s = Math.floor(sec % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function showPlayState() {
+            var playBtn = document.getElementById('alb-play');
+            var pauseBtn = document.getElementById('alb-pause');
+            if (playBtn) playBtn.style.display = 'none';
+            if (pauseBtn) pauseBtn.style.display = '';
+            playing = true;
+        }
+
+        function showPauseState() {
+            var playBtn = document.getElementById('alb-play');
+            var pauseBtn = document.getElementById('alb-pause');
+            if (playBtn) playBtn.style.display = '';
+            if (pauseBtn) pauseBtn.style.display = 'none';
+            playing = false;
+        }
+
+        function highlightTrack(index) {
+            var list = document.getElementById('track-list');
+            if (!list) return;
+            var items = list.querySelectorAll('.list-group-item');
+            for (var i = 0; i < items.length; i++) {
+                if (i === index) {
+                    items[i].classList.add('active');
+                } else {
+                    items[i].classList.remove('active');
+                }
+            }
+        }
+
+        function loadTrack(index) {
+            if (index < 0 || index >= tracks.length) return;
+            currentIndex = index;
+            var track = tracks[index];
+
+            document.getElementById('alb-now-title').textContent = track.name;
+            document.getElementById('alb-time').textContent = '0:00';
+            document.getElementById('alb-duration').textContent = formatTime(track.durationSeconds);
+            document.getElementById('alb-seek-fill').style.width = '0%';
+
+            highlightTrack(index);
+
+            audio.src = track.path;
+            audio.load();
+            audio.play().then(showPlayState).catch(function () {});
+        }
+
+        return {
+            init: function (trackList) {
+                tracks = trackList || [];
+                currentIndex = -1;
+                playing = false;
+
+                audio.addEventListener('timeupdate', function () {
+                    document.getElementById('alb-time').textContent = formatTime(audio.currentTime);
+                    var dur = audio.duration;
+                    var pct = dur ? (audio.currentTime / dur * 100) : 0;
+                    document.getElementById('alb-seek-fill').style.width = pct + '%';
+                });
+                audio.addEventListener('loadedmetadata', function () {
+                    document.getElementById('alb-duration').textContent = formatTime(audio.duration);
+                });
+                audio.addEventListener('ended', function () {
+                    var next = currentIndex + 1;
+                    if (next >= tracks.length) next = 0;
+                    loadTrack(next);
+                });
+                audio.addEventListener('play', showPlayState);
+                audio.addEventListener('pause', showPauseState);
+
+                document.getElementById('alb-play').addEventListener('click', function () {
+                    if (currentIndex >= 0 && !audio.src) { loadTrack(currentIndex); return; }
+                    if (currentIndex < 0 && tracks.length > 0) {
+                        loadTrack(0);
+                    } else {
+                        audio.play().then(showPlayState).catch(function () {});
+                    }
+                });
+                document.getElementById('alb-pause').addEventListener('click', function () {
+                    audio.pause();
+                });
+                document.getElementById('alb-prev').addEventListener('click', function () {
+                    var prev = currentIndex - 1;
+                    if (prev < 0) prev = tracks.length - 1;
+                    loadTrack(prev);
+                });
+                document.getElementById('alb-next').addEventListener('click', function () {
+                    var next = currentIndex + 1;
+                    if (next >= tracks.length) next = 0;
+                    loadTrack(next);
+                });
+                document.getElementById('alb-seek-bar').addEventListener('click', function (e) {
+                    if (!audio.duration) return;
+                    var rect = this.getBoundingClientRect();
+                    var pct = (e.clientX - rect.left) / rect.width;
+                    audio.currentTime = pct * audio.duration;
+                });
+            },
+
+            playTrack: function (index) {
+                loadTrack(index);
+            },
+
+            stop: function () {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.src = '';
+                playing = false;
+                currentIndex = -1;
+                showPauseState();
+                highlightTrack(-1);
+                document.getElementById('alb-now-title').textContent = '';
+                document.getElementById('alb-time').textContent = '0:00';
+                document.getElementById('alb-duration').textContent = '0:00';
+                document.getElementById('alb-seek-fill').style.width = '0%';
+            },
+
+            isInitialized: function () {
+                return tracks.length > 0;
+            }
+        };
+    })();
+
     var ARTIST_ART_COOKIE = 'MusicBuddyArtistArt';
 
     function getArtistArtMap() {
@@ -212,6 +353,7 @@ var albums = (function () {
         var backBtn = document.getElementById('albums-back-btn');
         var grid = document.getElementById('albums-grid');
         var trackView = document.getElementById('albums-track-view');
+        var playerBar = document.getElementById('album-player-bar');
 
         header.classList.remove('d-none');
         backBtn.href = '/Albums?artist=' + encodeURIComponent(artist.name);
@@ -220,6 +362,8 @@ var albums = (function () {
 
         grid.classList.add('d-none');
         trackView.classList.remove('d-none');
+
+        albumPlayer.stop();
 
         var infoCard = document.getElementById('album-info-card');
         if (!artist.isUncatalogued && detail && detail.tracks.length > 0) {
@@ -238,8 +382,13 @@ var albums = (function () {
             }
         }
 
+        if (detail.tracks.length > 0) {
+            playerBar.classList.remove('d-none');
+            albumPlayer.init(detail.tracks);
+        }
+
         var list = document.getElementById('track-list');
-        detail.tracks.forEach(function (track) {
+        detail.tracks.forEach(function (track, index) {
             var item = document.createElement('button');
             item.type = 'button';
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
@@ -254,6 +403,11 @@ var albums = (function () {
 
             item.appendChild(name);
             item.appendChild(dur);
+
+            item.addEventListener('click', function () {
+                albumPlayer.playTrack(index);
+            });
+
             list.appendChild(item);
         });
     }
@@ -330,5 +484,8 @@ var albums = (function () {
             });
     }
 
-    return { init: init };
+    return {
+        init: init,
+        stopPlayer: function () { albumPlayer.stop(); }
+    };
 })();
