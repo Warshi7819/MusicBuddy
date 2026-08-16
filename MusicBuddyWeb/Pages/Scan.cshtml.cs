@@ -263,11 +263,15 @@ public class ScanModel : PageModel
         if (normalizedLookup == normalizedCatalog)
             return true;
 
-        if (normalizedLookup.Contains(normalizedCatalog) || normalizedCatalog.Contains(normalizedLookup))
+        var shorter = normalizedLookup.Length <= normalizedCatalog.Length ? normalizedLookup : normalizedCatalog;
+        var longer = normalizedLookup.Length <= normalizedCatalog.Length ? normalizedCatalog : normalizedLookup;
+        if (shorter.Length >= 3 && longer.Contains(shorter))
             return true;
 
-        var lookupWords = normalizedLookup.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var catalogWords = normalizedCatalog.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lookupWords = normalizedLookup.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length >= 3).ToArray();
+        var catalogWords = normalizedCatalog.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length >= 3).ToArray();
 
         if (lookupWords.Length > 0 && catalogWords.Length > 0)
         {
