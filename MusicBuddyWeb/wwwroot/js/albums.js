@@ -177,6 +177,25 @@ var albums = (function () {
             .catch(function () { if (onResult) onResult(false); });
     }
 
+    function renderStats(artists) {
+        var el = document.getElementById('albums-stats');
+        if (!el) return;
+        var artistCount = artists.length;
+        var albumCount = 0;
+        var songCount = 0;
+        for (var i = 0; i < artists.length; i++) {
+            var a = artists[i].albums || [];
+            albumCount += a.length;
+            for (var j = 0; j < a.length; j++) {
+                songCount += a[j].trackCount || 0;
+            }
+        }
+        el.innerHTML = '<i class="bi bi-people me-1"></i>' + artistCount + ' Artists'
+            + ' &middot; <i class="bi bi-disc me-1"></i>' + albumCount + ' Albums'
+            + ' &middot; <i class="bi bi-music-note me-1"></i>' + songCount + ' Songs';
+        el.classList.remove('d-none');
+    }
+
     function renderArtistGrid(artists) {
         var grid = document.getElementById('albums-grid');
         var artMap = getArtistArtMap();
@@ -448,7 +467,10 @@ var albums = (function () {
 
                 content.classList.remove('d-none');
 
+                var stats = document.getElementById('albums-stats');
+
                 if (selectedArtist) {
+                    if (stats) stats.classList.add('d-none');
                     var artist = artists.find(function (a) { return a.name === selectedArtist; });
                     if (!artist) {
                         empty.classList.remove('d-none');
@@ -476,6 +498,7 @@ var albums = (function () {
                     }
                 } else {
                     renderArtistGrid(artists);
+                    renderStats(artists);
                 }
             })
             .catch(function () {
