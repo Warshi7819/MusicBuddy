@@ -11,6 +11,7 @@ public class MusicBuddyDbContext : DbContext
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
     public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
+    public DbSet<Setting> Settings => Set<Setting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

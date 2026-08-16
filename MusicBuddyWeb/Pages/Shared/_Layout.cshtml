@@ -135,6 +135,10 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-page="/Albums"><i class="bi bi-disc me-1"></i>Albums</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Scan" ? "active" : "")"
+                               asp-page="/Scan"><i class="bi bi-upc-scan me-1"></i>Scan CD</a>
+                        </li>
                     </ul>
                     <ul class="navbar-nav ms-auto">
                         @if (User.Identity?.IsAuthenticated == true)

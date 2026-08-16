@@ -425,3 +425,32 @@ body {
   opacity: 0;
   transform: translateY(8px);
 }
+
+#scan-page .alert {
+  border-radius: 0.5rem;
+}
+
+#scan-page .card {
+  border-color: var(--bs-border-color);
+}
+
+#scan-page #reader {
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+#scan-page #reader img[alt="Info icon"] {
+  display: none;
+}
+
+#scan-page #reader__dashboard_section_csr button {
+  background-color: var(--bs-primary) !important;
+  color: var(--bs-body-color) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+#scan-page #reader__dashboard_section_fsr button {
+  background-color: var(--bs-secondary-bg, var(--bs-tertiary-bg)) !important;
+  color: var(--bs-body-color) !important;
+  border-color: var(--bs-border-color) !important;
+}

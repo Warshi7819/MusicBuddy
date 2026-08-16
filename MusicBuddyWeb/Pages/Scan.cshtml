@@ -1,0 +1,230 @@
+@page
+@model MusicBuddyWeb.Pages.ScanModel
+@{
+    ViewData["Title"] = "Scan CD";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        
+        <p class="text-muted text-center">Point your camera at a barcode on a CD case.</p>
+
+        <div class="card mb-3">
+            <div class="card-body p-2">
+                <div id="reader"></div>
+            </div>
+        </div>
+
+        <div id="resultCard" class="card border-success d-none mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h2 class="h6 text-uppercase text-muted mb-0">Decoded</h2>
+                    <span id="resultFormat" class="badge bg-secondary"></span>
+                </div>
+                <div id="resultCode" class="display-6 fw-bold font-monospace text-break text-center"></div>
+                <div class="text-center">
+                    <span id="resultChecksum" class="badge bg-success d-none"></span>
+                </div>
+                <hr>
+                <div id="lookupState" class="text-center text-muted d-none">
+                    <div class="spinner-border spinner-border-sm me-2"></div>Looking up...
+                </div>
+                <div id="lookupResult" class="d-none">
+                    <div class="d-flex gap-3 align-items-start">
+                        <div id="lookupArtworkWrap" class="d-none">
+                            <img id="lookupArtwork" src="" alt="Cover art" class="rounded border"
+                                 style="width: 96px; height: 96px; object-fit: cover;">
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span id="lookupSource" class="badge bg-info text-dark"></span>
+                            </div>
+                            <h3 id="lookupTitle" class="h5 mb-0 mt-1"></h3>
+                            <div id="lookupArtist" class="text-muted"></div>
+                        </div>
+                    </div>
+                    <div id="matchResult" class="mt-3"></div>
+                </div>
+                <div id="lookupNotFound" class="d-none text-muted text-center small">
+                    No product found for this barcode.
+                </div>
+                <div class="mt-3 d-flex justify-content-center gap-2">
+                    <button id="copyBtn" type="button" class="btn btn-outline-primary">
+                        <i class="bi bi-clipboard me-1"></i>Copy
+                    </button>
+                    <button id="scanAgainBtn" type="button" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i>Scan another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/html5-qrcode/html5-qrcode.min.js"></script>
+    <script>
+        (function () {
+            var resultCard = document.getElementById('resultCard');
+            var resultCode = document.getElementById('resultCode');
+            var resultFormat = document.getElementById('resultFormat');
+            var resultChecksum = document.getElementById('resultChecksum');
+            var lookupState = document.getElementById('lookupState');
+            var lookupResult = document.getElementById('lookupResult');
+            var lookupNotFound = document.getElementById('lookupNotFound');
+            var matchResult = document.getElementById('matchResult');
+            var lastResult = null;
+
+            var formatLabels = {
+                EAN_13: 'EAN-13',
+                EAN_8: 'EAN-8',
+                UPC_A: 'UPC-A',
+                UPC_E: 'UPC-E',
+                CODE_128: 'Code 128',
+                CODE_39: 'Code 39',
+                CODE_93: 'Code 93',
+                ITF: 'ITF',
+                QR_CODE: 'QR Code'
+            };
+
+            function checksumValid(code) {
+                if (!/^\d+$/.test(code)) return false;
+                if (code.length !== 13 && code.length !== 12 && code.length !== 8) return false;
+                var sum = 0;
+                for (var i = 0; i < code.length - 1; i++) {
+                    sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+                }
+                var expected = (10 - (sum % 10)) % 10;
+                return expected === parseInt(code[code.length - 1], 10);
+            }
+
+            function doLookup(code) {
+                lookupState.classList.remove('d-none');
+                lookupResult.classList.add('d-none');
+                lookupNotFound.classList.add('d-none');
+                var url = '/Scan?handler=Lookup&code=' + encodeURIComponent(code);
+                fetch(url)
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        lookupState.classList.add('d-none');
+                        if (!data.found) {
+                            lookupNotFound.classList.remove('d-none');
+                            return;
+                        }
+                        document.getElementById('lookupSource').textContent = data.source;
+                        document.getElementById('lookupTitle').textContent = data.title;
+                        var artist = data.artist || '';
+                        var year = data.year || '';
+                        document.getElementById('lookupArtist').textContent =
+                            [artist, year].filter(Boolean).join(' \u00b7 ');
+                        var artwork = document.getElementById('lookupArtwork');
+                        var artworkWrap = document.getElementById('lookupArtworkWrap');
+                        if (data.artworkUrl) {
+                            artwork.src = data.artworkUrl;
+                            artworkWrap.classList.remove('d-none');
+                        } else {
+                            artworkWrap.classList.add('d-none');
+                        }
+
+                        renderMatch(data.match);
+
+                        lookupResult.classList.remove('d-none');
+                    })
+                    .catch(function () {
+                        lookupState.classList.add('d-none');
+                        lookupNotFound.textContent = 'Lookup unavailable.';
+                        lookupNotFound.classList.remove('d-none');
+                    });
+            }
+
+            function renderMatch(match) {
+                if (!match) {
+                    matchResult.innerHTML = '';
+                    return;
+                }
+                if (match.found && match.exactAlbum) {
+                    matchResult.innerHTML =
+                        '<div class="alert alert-success mb-0">' +
+                        '<i class="bi bi-check-circle-fill me-1"></i>In your collection' +
+                        ' <a href="' + match.albumLink + '" class="alert-link fw-semibold">View album &rarr;</a>' +
+                        '</div>';
+                } else if (match.artistPath) {
+                    matchResult.innerHTML =
+                        '<div class="alert alert-warning mb-0">' +
+                        '<i class="bi bi-exclamation-triangle-fill me-1"></i>Album not in collection' +
+                        ' <a href="' + match.artistLink + '" class="alert-link fw-semibold">Browse artist &rarr;</a>' +
+                        '</div>';
+                } else {
+                    matchResult.innerHTML =
+                        '<div class="alert alert-secondary mb-0">' +
+                        '<i class="bi bi-info-circle me-1"></i>Neither album nor artist found in your collection' +
+                        '</div>';
+                }
+            }
+
+            function showResult(text, format) {
+                resultCode.textContent = text;
+                resultFormat.textContent = formatLabels[format] || format;
+                resultChecksum.classList.add('d-none');
+                if (format === 'EAN_13' || format === 'EAN_8' || format === 'UPC_A') {
+                    resultChecksum.textContent = checksumValid(text) ? 'Checksum OK' : 'Checksum FAILED';
+                    resultChecksum.classList.toggle('bg-success', checksumValid(text));
+                    resultChecksum.classList.toggle('bg-danger', !checksumValid(text));
+                    resultChecksum.classList.remove('d-none');
+                }
+                resultCard.classList.remove('d-none');
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                doLookup(text);
+            }
+
+            var scanner = new Html5QrcodeScanner('reader', {
+                fps: 10,
+                qrbox: { width: 250, height: 100 },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.CODE_128
+                ],
+                rememberLastUsedCamera: true
+            }, false);
+
+            scanner.render(function (decodedText, decodedResult) {
+                if (lastResult === decodedText) return;
+                lastResult = decodedText;
+                showResult(decodedText, decodedResult.result.format);
+                scanner.pause(true);
+            }, function () { });
+
+            document.getElementById('scanAgainBtn').addEventListener('click', function () {
+                lastResult = null;
+                resultCard.classList.add('d-none');
+                lookupResult.classList.add('d-none');
+                lookupNotFound.classList.add('d-none');
+                lookupState.classList.add('d-none');
+                matchResult.innerHTML = '';
+                scanner.resume();
+            });
+
+            document.getElementById('copyBtn').addEventListener('click', function () {
+                var btn = this;
+                var done = function () {
+                    var original = btn.innerHTML;
+                    btn.innerHTML = 'Copied!';
+                    setTimeout(function () { btn.innerHTML = original; }, 1500);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(resultCode.textContent).then(done, function () { done(); });
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = resultCode.textContent;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    done();
+                }
+            });
+        })();
+    </script>
+}

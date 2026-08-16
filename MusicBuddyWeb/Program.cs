@@ -17,6 +17,7 @@ builder.Services.AddRazorPages(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CookieForwardingHandler>();
+builder.Services.AddHttpClient();
 
 builder.Services.AddHttpClient("MusicBuddyAPI", client =>
 {
