@@ -211,6 +211,16 @@ var albums = (function () {
             startWebAudioDecode(ts);
         }
 
+        function preloadTrack(index) {
+            if (index < 0 || index >= sources.length) return;
+            var ts = sources[index];
+            if (ts.state !== 'none') return;
+            ts.state = 'loading';
+            ts.audio.src = ts.path;
+            ts.audio.load();
+            startWebAudioDecode(ts);
+        }
+
         function tick() {
             if (!playing) return;
             var now = performance.now();
@@ -252,6 +262,7 @@ var albums = (function () {
             loadTrackSource(ts);
             playTrackSource(ts);
             showPlayState();
+            preloadTrack(index + 1);
         }
 
         return {
