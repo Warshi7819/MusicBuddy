@@ -18,11 +18,11 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <h5 class="card-title">Barcode lookup keys</h5>
+        <h5 class="card-title">Scan CD Barcodes</h5>
         <p class="text-muted small">
-            These keys are stored in the database and used by the <a asp-page="/Scan">Scan</a> page when looking up CD barcodes.
+            The API key is stored in the database and used by the <a asp-page="/Scan">Scan</a> page when looking up CD barcodes.
             The Scan page always tries <strong>iTunes</strong> first (no key needed), then falls back to Discogs.
-            Leave a field empty to clear the stored value.
+            Leave the field empty to clear the stored value.
         </p>
         <form method="post" asp-page-handler="Save" class="row g-3">
             <div class="col-md-6">
