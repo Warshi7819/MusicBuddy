@@ -37,6 +37,12 @@
             </a>
         </li>
     }
+    <li class="nav-item">
+        <a class="nav-link @(currentPage == "/Settings/Credits" ? "active" : "")"
+           asp-page="/Settings/Credits">
+            <i class="bi bi-heart"></i> Credits
+        </a>
+    </li>
 </ul>
 
 @RenderBody()

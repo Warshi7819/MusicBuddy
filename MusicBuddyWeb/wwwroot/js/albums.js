@@ -1,15 +1,14 @@
 var albums = (function () {
     var albumPlayer = (function () {
-        var audio = new Audio();
         var tracks = [];
         var currentIndex = -1;
         var playing = false;
+        var audioCtx = null;
+        var tickInterval = null;
+        var onTrackEnded = null;
 
-        function escapeHtml(s) {
-            var d = document.createElement('div');
-            d.appendChild(document.createTextNode(s));
-            return d.innerHTML;
-        }
+        var audio = new Audio();
+        var sources = [];
 
         function formatTime(sec) {
             if (isNaN(sec)) return '0:00';
@@ -47,21 +46,212 @@ var albums = (function () {
             }
         }
 
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function createTrackSource(track) {
+            var ts = {
+                path: track.path,
+                name: track.name,
+                duration: track.durationSeconds,
+                audio: new Audio(),
+                buffer: null,
+                source: null,
+                gainNode: null,
+                state: 'none',
+                position: 0,
+                endpos: (track.durationSeconds || 0) * 1000,
+                lastTick: 0,
+                endedTimer: null,
+                loadedHTML5: false,
+                loadedWebAudio: false
+            };
+
+            ts.audio.preload = 'auto';
+            ts.audio.addEventListener('canplaythrough', function () {
+                if (ts.loadedHTML5) return;
+                ts.loadedHTML5 = true;
+                if (ts.endpos <= 0 && ts.audio.duration) {
+                    ts.endpos = ts.audio.duration * 1000;
+                }
+            });
+            ts.audio.addEventListener('error', function () {});
+
+            return ts;
+        }
+
+        function startWebAudioDecode(ts) {
+            if (ts.loadedWebAudio || ts.state === 'none') return;
+            var ctx = ensureAudioContext();
+            fetch(ts.path)
+                .then(function (r) { return r.arrayBuffer(); })
+                .then(function (data) {
+                    return ctx.decodeAudioData(data);
+                })
+                .then(function (buf) {
+                    if (ts.state === 'none') return;
+                    ts.buffer = buf;
+                    ts.loadedWebAudio = true;
+                    if (ts.endpos <= 0) {
+                        ts.endpos = buf.duration * 1000;
+                    }
+                    if (ts.state === 'playing' && !ts.source) {
+                        switchToWebAudio(ts);
+                    }
+                })
+                .catch(function () {});
+        }
+
+        function switchToWebAudio(ts) {
+            if (!ts.buffer || ts.source !== null) return;
+            var ctx = ensureAudioContext();
+            var pos = ts.audio.currentTime || 0;
+            ts.audio.pause();
+
+            ts.gainNode = ctx.createGain();
+            ts.gainNode.gain.value = 1;
+            ts.source = ctx.createBufferSource();
+            ts.source.buffer = ts.buffer;
+            ts.source.connect(ts.gainNode);
+            ts.gainNode.connect(ctx.destination);
+
+            ts.source.start(0, pos);
+            ts.position = pos * 1000;
+            ts.lastTick = performance.now();
+            restartEndedTimer(ts);
+        }
+
+        function restartEndedTimer(ts) {
+            if (ts.endedTimer) {
+                clearTimeout(ts.endedTimer);
+                ts.endedTimer = null;
+            }
+            var remaining = ts.endpos - ts.position;
+            if (remaining > 0 && ts.state === 'playing') {
+                ts.endedTimer = setTimeout(function () {
+                    onTrackEndedHandler();
+                }, remaining);
+            }
+        }
+
+        function stopTrackSource(ts, resetPosition) {
+            if (ts.endedTimer) {
+                clearTimeout(ts.endedTimer);
+                ts.endedTimer = null;
+            }
+            if (ts.source) {
+                try { ts.source.stop(); } catch (e) {}
+                ts.source.disconnect();
+                ts.source = null;
+            }
+            if (ts.gainNode) {
+                ts.gainNode.disconnect();
+                ts.gainNode = null;
+            }
+            ts.audio.pause();
+            if (resetPosition) {
+                ts.position = 0;
+                ts.audio.currentTime = 0;
+            }
+            ts.state = 'stopped';
+        }
+
+        function playTrackSource(ts) {
+            if (ts.state === 'playing') return;
+            var ctx = ensureAudioContext();
+            ts.state = 'playing';
+            ts.lastTick = performance.now();
+
+            if (ts.buffer) {
+                ts.gainNode = ctx.createGain();
+                ts.gainNode.gain.value = 1;
+                ts.source = ctx.createBufferSource();
+                ts.source.buffer = ts.buffer;
+                ts.source.connect(ts.gainNode);
+                ts.gainNode.connect(ctx.destination);
+                var startOffset = ts.position / 1000;
+                ts.source.start(0, startOffset);
+                restartEndedTimer(ts);
+            } else if (ts.loadedHTML5) {
+                ts.audio.currentTime = ts.position / 1000;
+                ts.audio.play().then(function () {
+                    if (ts.state === 'playing') {
+                        restartEndedTimer(ts);
+                    }
+                }).catch(function () {});
+            } else {
+                ts.state = 'loading';
+                ts.audio.addEventListener('canplaythrough', function handler() {
+                    ts.audio.removeEventListener('canplaythrough', handler);
+                    if (ts.state === 'loading') {
+                        ts.state = 'playing';
+                        ts.audio.currentTime = ts.position / 1000;
+                        ts.audio.play().then(function () {
+                            if (ts.state === 'playing') {
+                                restartEndedTimer(ts);
+                            }
+                        }).catch(function () {});
+                    }
+                });
+            }
+        }
+
+        function loadTrackSource(ts) {
+            if (ts.state !== 'none') return;
+            ts.state = 'loading';
+            ts.audio.src = ts.path;
+            ts.audio.load();
+            startWebAudioDecode(ts);
+        }
+
+        function tick() {
+            if (!playing) return;
+            var now = performance.now();
+            var ts = sources[currentIndex];
+            if (ts && ts.state === 'playing') {
+                var delta = now - ts.lastTick;
+                ts.position += delta;
+                ts.lastTick = now;
+                if (ts.position > ts.endpos) ts.position = ts.endpos;
+                document.getElementById('alb-time').textContent = formatTime(ts.position / 1000);
+                var pct = ts.endpos ? (ts.position / ts.endpos * 100) : 0;
+                document.getElementById('alb-seek-fill').style.width = pct + '%';
+            }
+        }
+
+        function onTrackEndedHandler() {
+            if (onTrackEnded && onTrackEnded()) return;
+            var next = currentIndex + 1;
+            if (next >= tracks.length) next = 0;
+            loadTrack(next);
+        }
+
+        function updateUIForTrack(ts) {
+            document.getElementById('alb-now-title').textContent = ts.name;
+            document.getElementById('alb-time').textContent = '0:00';
+            document.getElementById('alb-duration').textContent = formatTime(ts.duration);
+            document.getElementById('alb-seek-fill').style.width = '0%';
+            highlightTrack(currentIndex);
+        }
+
         function loadTrack(index) {
             if (index < 0 || index >= tracks.length) return;
+            if (currentIndex >= 0 && currentIndex < sources.length) {
+                stopTrackSource(sources[currentIndex], true);
+            }
             currentIndex = index;
-            var track = tracks[index];
-
-            document.getElementById('alb-now-title').textContent = track.name;
-            document.getElementById('alb-time').textContent = '0:00';
-            document.getElementById('alb-duration').textContent = formatTime(track.durationSeconds);
-            document.getElementById('alb-seek-fill').style.width = '0%';
-
-            highlightTrack(index);
-
-            audio.src = track.path;
-            audio.load();
-            audio.play().then(showPlayState).catch(function () {});
+            var ts = sources[index];
+            updateUIForTrack(ts);
+            loadTrackSource(ts);
+            playTrackSource(ts);
+            showPlayState();
         }
 
         return {
@@ -69,34 +259,37 @@ var albums = (function () {
                 tracks = trackList || [];
                 currentIndex = -1;
                 playing = false;
+                sources = [];
+                ensureAudioContext();
 
-                audio.addEventListener('timeupdate', function () {
-                    document.getElementById('alb-time').textContent = formatTime(audio.currentTime);
-                    var dur = audio.duration;
-                    var pct = dur ? (audio.currentTime / dur * 100) : 0;
-                    document.getElementById('alb-seek-fill').style.width = pct + '%';
-                });
-                audio.addEventListener('loadedmetadata', function () {
-                    document.getElementById('alb-duration').textContent = formatTime(audio.duration);
-                });
-                audio.addEventListener('ended', function () {
-                    var next = currentIndex + 1;
-                    if (next >= tracks.length) next = 0;
-                    loadTrack(next);
-                });
-                audio.addEventListener('play', showPlayState);
-                audio.addEventListener('pause', showPauseState);
+                for (var i = 0; i < tracks.length; i++) {
+                    sources.push(createTrackSource(tracks[i]));
+                }
+
+                if (tickInterval) clearInterval(tickInterval);
+                tickInterval = setInterval(tick, 16);
 
                 document.getElementById('alb-play').addEventListener('click', function () {
-                    if (currentIndex >= 0 && !audio.src) { loadTrack(currentIndex); return; }
-                    if (currentIndex < 0 && tracks.length > 0) {
+                    if (currentIndex >= 0 && currentIndex < sources.length) {
+                        var ts = sources[currentIndex];
+                        if (ts.state === 'stopped' || ts.state === 'loading') {
+                            playTrackSource(ts);
+                            showPlayState();
+                        } else if (ts.state === 'playing') {
+                            ts.position = ts.position || 0;
+                            stopTrackSource(ts, false);
+                            showPauseState();
+                        }
+                    } else if (tracks.length > 0) {
                         loadTrack(0);
-                    } else {
-                        audio.play().then(showPlayState).catch(function () {});
                     }
                 });
                 document.getElementById('alb-pause').addEventListener('click', function () {
-                    audio.pause();
+                    if (currentIndex >= 0 && currentIndex < sources.length) {
+                        var ts = sources[currentIndex];
+                        stopTrackSource(ts, false);
+                        showPauseState();
+                    }
                 });
                 document.getElementById('alb-prev').addEventListener('click', function () {
                     var prev = currentIndex - 1;
@@ -109,10 +302,20 @@ var albums = (function () {
                     loadTrack(next);
                 });
                 document.getElementById('alb-seek-bar').addEventListener('click', function (e) {
-                    if (!audio.duration) return;
+                    if (currentIndex < 0 || currentIndex >= sources.length) return;
+                    var ts = sources[currentIndex];
+                    if (!ts.endpos) return;
                     var rect = this.getBoundingClientRect();
                     var pct = (e.clientX - rect.left) / rect.width;
-                    audio.currentTime = pct * audio.duration;
+                    var newPos = pct * ts.endpos;
+                    var wasPlaying = ts.state === 'playing';
+                    if (wasPlaying) stopTrackSource(ts, false);
+                    ts.position = newPos;
+                    if (ts.audio) ts.audio.currentTime = newPos / 1000;
+                    if (wasPlaying) {
+                        ts.state = 'stopped';
+                        playTrackSource(ts);
+                    }
                 });
             },
 
@@ -121,9 +324,16 @@ var albums = (function () {
             },
 
             stop: function () {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.src = '';
+                if (currentIndex >= 0 && currentIndex < sources.length) {
+                    stopTrackSource(sources[currentIndex], true);
+                }
+                for (var i = 0; i < sources.length; i++) {
+                    sources[i].state = 'none';
+                    sources[i].audio.src = '';
+                    sources[i].buffer = null;
+                    sources[i].loadedHTML5 = false;
+                    sources[i].loadedWebAudio = false;
+                }
                 playing = false;
                 currentIndex = -1;
                 showPauseState();
