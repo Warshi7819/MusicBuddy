@@ -297,6 +297,8 @@ var mp3Player = (function () {
             ts.audio.play().then(function () {
                 if (ts.state === 'playing') {
                     restartEndedTimer(ts);
+                } else {
+                    ts.audio.pause();
                 }
             }).catch(function () {});
         } else {
@@ -304,20 +306,16 @@ var mp3Player = (function () {
                 ts.state = 'none';
                 loadTrackSource(ts);
             }
-            ts.state = 'loading';
-            ts.audio.addEventListener('canplaythrough', function handler() {
-                ts.audio.removeEventListener('canplaythrough', handler);
-                if (ts.state === 'loading') {
-                    ts.state = 'playing';
-                    ensureMediaSource(ts);
-                    ts.audio.currentTime = ts.position / 1000;
-                    ts.audio.play().then(function () {
-                        if (ts.state === 'playing') {
-                            restartEndedTimer(ts);
-                        }
-                    }).catch(function () {});
+            ts.state = 'playing';
+            ensureMediaSource(ts);
+            ts.audio.currentTime = ts.position / 1000;
+            ts.audio.play().then(function () {
+                if (ts.state === 'playing') {
+                    restartEndedTimer(ts);
+                } else {
+                    ts.audio.pause();
                 }
-            });
+            }).catch(function () {});
         }
     }
 
@@ -445,7 +443,11 @@ var mp3Player = (function () {
         if (!ts.endpos) return;
         newPos = Math.max(0, Math.min(newPos, ts.endpos));
         var wasPlaying = resume === true ? ts.state === 'playing' : false;
-        if (wasPlaying) stopTrackSource(ts, false);
+        if (wasPlaying) {
+            stopTrackSource(ts, false);
+        } else if (ts.audio && !ts.audio.paused) {
+            stopTrackSource(ts, false);
+        }
         ts.position = newPos;
         if (ts.audio) ts.audio.currentTime = newPos / 1000;
         if (wasPlaying) {
@@ -484,20 +486,15 @@ var mp3Player = (function () {
         });
     }
 
-    function handlePause() {
-        var ts = sources[currentIndex];
-        if (ts) stopTrackSource(ts, false);
-        showPauseState();
+    function isAudible(ts) {
+        return !!(ts && (ts.state === 'playing' || ts.state === 'loading'
+            || ts.source || (ts.audio && !ts.audio.paused)));
     }
 
-    function playPause() {
+    function handlePause() {
         var ts = sources[currentIndex];
-        if (ts && ts.state === 'playing') {
-            stopTrackSource(ts, false);
-            showPauseState();
-            return;
-        }
-        handlePlay();
+        if (isAudible(ts)) stopTrackSource(ts, false);
+        showPauseState();
     }
 
     function syncPlaylist(tracks) {
@@ -620,7 +617,8 @@ var mp3Player = (function () {
             seekToPosition(ts, seconds * 1000, true);
         },
 
-        playPause: playPause,
+        play: handlePlay,
+        pause: handlePause,
 
         prev: function () {
             var prev = currentIndex - 1;

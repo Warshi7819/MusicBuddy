@@ -25,6 +25,7 @@ var playlistEditor = (function () {
     var previewContext = [];
     var previewIndex = -1;
     var libraryFiles = [];
+    var seekDragging = false;
 
     function $(id) { return document.getElementById(id); }
 
@@ -126,7 +127,10 @@ var playlistEditor = (function () {
         if (!player || !player.getTransportState) return;
         var st = player.getTransportState();
         var playEl = $('pe-t-play');
-        if (playEl) playEl.innerHTML = st.playing ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+        if (playEl) {
+            var markup = st.playing ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+            if (playEl.innerHTML !== markup) playEl.innerHTML = markup;
+        }
         var timeEl = $('pe-t-time');
         var seekEl = $('pe-t-seek');
         if (typeof st.duration === 'string') {
@@ -138,7 +142,7 @@ var playlistEditor = (function () {
         if (timeEl) timeEl.textContent = formatTimeShort(cur) + ' / ' + formatTimeShort(dur);
         if (seekEl) {
             seekEl.disabled = dur <= 0;
-            if (dur > 0 && document.activeElement !== seekEl) {
+            if (dur > 0 && !seekDragging) {
                 seekEl.value = Math.round((cur / dur) * 1000);
             }
         }
@@ -753,16 +757,31 @@ var playlistEditor = (function () {
         if (tNext) tNext.addEventListener('click', transportNext);
         if (tPlay) tPlay.addEventListener('click', function () {
             var p = getPlayer();
-            if (p && p.playPause) p.playPause();
-        });
-        if (tSeek) tSeek.addEventListener('input', function () {
-            var p = getPlayer();
-            if (!p || !p.getTransportState || !p.seekTo) return;
-            var st = p.getTransportState();
-            if (typeof st.duration === 'number' && st.duration > 0) {
-                p.seekTo((this.value / 1000) * st.duration);
+            if (!p) return;
+            var st = p.getTransportState ? p.getTransportState() : null;
+            if (st && st.playing) {
+                if (p.pause) p.pause();
+                else if (p.playPause) p.playPause();
+            } else {
+                if (p.play) p.play();
+                else if (p.playPause) p.playPause();
             }
+            updateTransport();
         });
+        if (tSeek) {
+            tSeek.addEventListener('pointerdown', function () { seekDragging = true; });
+            tSeek.addEventListener('pointerup', function () { seekDragging = false; });
+            tSeek.addEventListener('change', function () { seekDragging = false; });
+            tSeek.addEventListener('blur', function () { seekDragging = false; });
+            tSeek.addEventListener('input', function () {
+                var p = getPlayer();
+                if (!p || !p.getTransportState || !p.seekTo) return;
+                var st = p.getTransportState();
+                if (typeof st.duration === 'number' && st.duration > 0) {
+                    p.seekTo((this.value / 1000) * st.duration);
+                }
+            });
+        }
 
         if (tracksEl) {
             tracksEl.addEventListener('click', function (e) {
