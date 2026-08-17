@@ -361,18 +361,35 @@ var albums = (function () {
         };
     })();
 
-    var ARTIST_ART_COOKIE = 'MusicBuddyArtistArt';
+    var artistArtMap = {};
 
-    function getArtistArtMap() {
-        try {
-            var val = document.cookie.split('; ').find(function (c) { return c.startsWith(ARTIST_ART_COOKIE + '='); });
-            if (!val) return {};
-            return JSON.parse(decodeURIComponent(val.split('=').slice(1).join('=')));
-        } catch { return {}; }
+    function loadArtistArtMap() {
+        return fetch('/api/artistart')
+            .then(function (res) { return res.json(); })
+            .then(function (map) { artistArtMap = map || {}; })
+            .catch(function () { artistArtMap = {}; });
     }
 
-    function setArtistArtMap(map) {
-        document.cookie = ARTIST_ART_COOKIE + '=' + encodeURIComponent(JSON.stringify(map)) + ';path=/;max-age=31536000';
+    function saveArtistArt(artistPath, albumPath) {
+        return fetch('/api/artistart?artistPath=' + encodeURIComponent(artistPath) +
+            '&albumPath=' + encodeURIComponent(albumPath), { method: 'PUT' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('Save failed');
+            });
+    }
+
+    function refreshArtistArtButtons(grid, useBtn) {
+        var buttons = grid.querySelectorAll('.album-art-btn');
+        for (var i = 0; i < buttons.length; i++) {
+            var btn = buttons[i];
+            if (btn === useBtn) {
+                btn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
+                btn.innerHTML = '<i class="bi bi-check me-1"></i>Selected';
+            } else if (btn.classList.contains('btn-success')) {
+                btn.className = 'btn btn-outline-secondary btn-sm mt-2 album-art-btn';
+                btn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
+            }
+        }
     }
 
     function fetchAlbumArt(path, imgEl, placeholderEl, onResult) {
@@ -419,7 +436,7 @@ var albums = (function () {
 
     function renderArtistGrid(artists) {
         var grid = document.getElementById('albums-grid');
-        var artMap = getArtistArtMap();
+        var artMap = artistArtMap;
 
         artists.forEach(function (artist) {
             var col = document.createElement('div');
@@ -496,7 +513,7 @@ var albums = (function () {
         nameEl.textContent = artist.name;
 
         var grid = document.getElementById('albums-grid');
-        var artMap = getArtistArtMap();
+        var artMap = artistArtMap;
 
         albums.forEach(function (album) {
             var col = document.createElement('div');
@@ -543,20 +560,13 @@ var albums = (function () {
             useBtn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
             useBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
+                var prev = artMap[artist.path];
                 artMap[artist.path] = album.path;
-                setArtistArtMap(artMap);
-
-                var buttons = grid.querySelectorAll('.album-art-btn');
-                for (var i = 0; i < buttons.length; i++) {
-                    var btn = buttons[i];
-                    if (btn === useBtn) {
-                        btn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
-                        btn.innerHTML = '<i class="bi bi-check me-1"></i>Selected';
-                    } else if (btn.classList.contains('btn-success')) {
-                        btn.className = 'btn btn-outline-secondary btn-sm mt-2 album-art-btn';
-                        btn.innerHTML = '<i class="bi bi-image me-1"></i>Use as artist image';
-                    }
-                }
+                refreshArtistArtButtons(grid, useBtn);
+                saveArtistArt(artist.path, album.path).catch(function () {
+                    artMap[artist.path] = prev;
+                    refreshArtistArtButtons(grid, useBtn);
+                });
             });
 
             if (artMap[artist.path] === album.path) {
@@ -675,57 +685,59 @@ var albums = (function () {
             });
         }
 
-        fetch('/api/albums')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                loading.classList.add('d-none');
-                var artists = data.artists || [];
+        Promise.all([
+            fetch('/api/albums').then(function (res) { return res.json(); }),
+            loadArtistArtMap()
+        ]).then(function (parts) {
+            var data = parts[0];
+            loading.classList.add('d-none');
+            var artists = data.artists || [];
 
-                if (artists.length === 0) {
+            if (artists.length === 0) {
+                empty.classList.remove('d-none');
+                return;
+            }
+
+            content.classList.remove('d-none');
+
+            var stats = document.getElementById('albums-stats');
+
+            if (selectedArtist) {
+                if (stats) stats.classList.add('d-none');
+                var artist = artists.find(function (a) { return a.name === selectedArtist; });
+                if (!artist) {
                     empty.classList.remove('d-none');
+                    content.classList.add('d-none');
                     return;
                 }
-
-                content.classList.remove('d-none');
-
-                var stats = document.getElementById('albums-stats');
-
-                if (selectedArtist) {
-                    if (stats) stats.classList.add('d-none');
-                    var artist = artists.find(function (a) { return a.name === selectedArtist; });
-                    if (!artist) {
+                if (selectedAlbum !== null && selectedAlbum !== undefined) {
+                    var album = artist.albums.find(function (a) { return a.path === selectedAlbum; });
+                    if (!album) {
                         empty.classList.remove('d-none');
                         content.classList.add('d-none');
                         return;
                     }
-                    if (selectedAlbum !== null && selectedAlbum !== undefined) {
-                        var album = artist.albums.find(function (a) { return a.path === selectedAlbum; });
-                        if (!album) {
+                    fetch('/api/albums/album?path=' + encodeURIComponent(album.path))
+                        .then(function (res) { return res.json(); })
+                        .then(function (detail) {
+                            renderTrackView(artist, album, detail);
+                        })
+                        .catch(function () {
                             empty.classList.remove('d-none');
                             content.classList.add('d-none');
-                            return;
-                        }
-                        fetch('/api/albums/album?path=' + encodeURIComponent(album.path))
-                            .then(function (res) { return res.json(); })
-                            .then(function (detail) {
-                                renderTrackView(artist, album, detail);
-                            })
-                            .catch(function () {
-                                empty.classList.remove('d-none');
-                                content.classList.add('d-none');
-                            });
-                    } else {
-                        renderAlbumGrid(artist, artist.albums);
-                    }
+                        });
                 } else {
-                    renderArtistGrid(artists);
-                    renderStats(artists);
+                    renderAlbumGrid(artist, artist.albums);
                 }
-            })
-            .catch(function () {
-                loading.classList.add('d-none');
-                empty.classList.remove('d-none');
-            });
+            } else {
+                renderArtistGrid(artists);
+                renderStats(artists);
+            }
+        })
+        .catch(function () {
+            loading.classList.add('d-none');
+            empty.classList.remove('d-none');
+        });
     }
 
     return {
