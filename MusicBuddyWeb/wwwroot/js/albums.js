@@ -4,6 +4,8 @@ var albums = (function () {
         var currentIndex = -1;
         var playing = false;
         var audioCtx = null;
+        var volumeGain = null;
+        var volumeBound = false;
         var tickInterval = null;
         var onTrackEnded = null;
 
@@ -49,6 +51,9 @@ var albums = (function () {
         function ensureAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                volumeGain = audioCtx.createGain();
+                volumeGain.gain.value = 0.8;
+                volumeGain.connect(audioCtx.destination);
             }
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -120,7 +125,7 @@ var albums = (function () {
             ts.source = ctx.createBufferSource();
             ts.source.buffer = ts.buffer;
             ts.source.connect(ts.gainNode);
-            ts.gainNode.connect(ctx.destination);
+            ts.gainNode.connect(volumeGain);
 
             ts.source.start(0, pos);
             ts.position = pos * 1000;
@@ -175,7 +180,7 @@ var albums = (function () {
                 ts.source = ctx.createBufferSource();
                 ts.source.buffer = ts.buffer;
                 ts.source.connect(ts.gainNode);
-                ts.gainNode.connect(ctx.destination);
+                ts.gainNode.connect(volumeGain);
                 var startOffset = ts.position / 1000;
                 ts.source.start(0, startOffset);
                 restartEndedTimer(ts);
@@ -312,6 +317,14 @@ var albums = (function () {
                     if (next >= tracks.length) next = 0;
                     loadTrack(next);
                 });
+                if (!volumeBound) {
+                    var volEl = document.getElementById('alb-volume');
+                    volEl.addEventListener('input', function () {
+                        if (volumeGain) volumeGain.gain.value = this.value / 100;
+                    });
+                    volEl.dispatchEvent(new Event('input'));
+                    volumeBound = true;
+                }
                 document.getElementById('alb-seek-bar').addEventListener('click', function (e) {
                     if (currentIndex < 0 || currentIndex >= sources.length) return;
                     var ts = sources[currentIndex];
@@ -509,6 +522,8 @@ var albums = (function () {
     function renderAlbumGrid(artist, albums) {
         var header = document.getElementById('albums-header');
         var nameEl = document.getElementById('albums-artist-name');
+        var backBtn = document.getElementById('albums-back-btn');
+        backBtn.classList.remove('d-none');
         header.classList.remove('d-none');
         nameEl.textContent = artist.name;
 
@@ -605,10 +620,12 @@ var albums = (function () {
         var trackView = document.getElementById('albums-track-view');
         var playerBar = document.getElementById('album-player-bar');
 
-        header.classList.remove('d-none');
+        header.classList.add('d-none');
+        backBtn.classList.remove('d-none');
         backBtn.href = '/Albums?artist=' + encodeURIComponent(artist.name);
         backBtn.innerHTML = '<i class="bi bi-arrow-left me-1"></i>' + artist.name;
-        nameEl.textContent = album.name;
+        nameEl.classList.add('d-none');
+        nameEl.textContent = '';
 
         grid.classList.add('d-none');
         trackView.classList.remove('d-none');
