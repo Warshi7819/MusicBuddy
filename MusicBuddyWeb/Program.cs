@@ -129,6 +129,6 @@ app.Map("/api/{**path}", async (HttpContext context, string path) =>
         context.Response.StatusCode = 502;
         await context.Response.WriteAsJsonAsync(new { message = "API unavailable", detail = ex.Message });
     }
-});
+}).RequireAuthorization();
 
 app.Run();
