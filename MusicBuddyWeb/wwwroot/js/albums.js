@@ -428,6 +428,35 @@ var albums = (function () {
             .catch(function () { if (onResult) onResult(false); });
     }
 
+    var lazyObserver = null;
+
+    function getLazyObserver() {
+        if (lazyObserver) return lazyObserver;
+        lazyObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    var wrap = entry.target;
+                    var path = wrap.dataset.artPath;
+                    var img = wrap._artImg;
+                    var placeholder = wrap._artPlaceholder;
+                    var callback = wrap._artCallback;
+                    lazyObserver.unobserve(wrap);
+                    if (path) fetchAlbumArt(path, img, placeholder, callback);
+                }
+            });
+        }, { rootMargin: '200px' });
+        return lazyObserver;
+    }
+
+    function observeLazyArt(path, imgEl, placeholderEl, onResult) {
+        var wrap = placeholderEl.parentElement;
+        wrap.dataset.artPath = path;
+        wrap._artImg = imgEl;
+        wrap._artPlaceholder = placeholderEl;
+        wrap._artCallback = onResult;
+        getLazyObserver().observe(wrap);
+    }
+
     function renderStats(artists) {
         var el = document.getElementById('albums-stats');
         if (!el) return;
@@ -515,7 +544,7 @@ var albums = (function () {
             col.appendChild(card);
             grid.appendChild(col);
 
-            if (artPath) fetchAlbumArt(artPath, img, placeholder);
+            if (artPath) observeLazyArt(artPath, img, placeholder);
         });
     }
 
@@ -597,7 +626,7 @@ var albums = (function () {
             col.appendChild(card);
             grid.appendChild(col);
 
-            if (album.firstTrackPath) fetchAlbumArt(album.firstTrackPath, img, placeholder, function (hasArt) {
+            if (album.firstTrackPath) observeLazyArt(album.firstTrackPath, img, placeholder, function (hasArt) {
                 if (hasArt || artMap[artist.path] === album.path) useBtn.classList.remove('d-none');
             });
         });

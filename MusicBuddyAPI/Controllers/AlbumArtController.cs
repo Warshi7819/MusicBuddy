@@ -35,7 +35,7 @@ public class AlbumArtController : ControllerBase
         if (_memoryCache.TryGetValue(cacheKey, out byte[]? cached) && cached is not null)
         {
             if (cached.Length == 0) return NoContent();
-            return File(cached, "image/jpeg");
+            return CachedFile(cached, "image/jpeg");
         }
 
         var fullPath = _cache.ResolveFilePath(path);
@@ -65,7 +65,7 @@ public class AlbumArtController : ControllerBase
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
                 });
                 _logger.LogDebug("Album art (folder fallback) returned for {Path} ({Size} bytes)", path, folderBytes.Length);
-                return File(folderBytes, "image/jpeg");
+                return CachedFile(folderBytes, "image/jpeg");
             }
 
             var picture = tagFile.Tag.Pictures[0];
@@ -78,13 +78,19 @@ public class AlbumArtController : ControllerBase
             });
 
             _logger.LogDebug("Album art returned for {Path} ({Size} bytes)", path, bytes.Length);
-            return File(bytes, mimeType);
+            return CachedFile(bytes, mimeType);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reading album art for {Path}", path);
             return NoContent();
         }
+    }
+
+    private FileContentResult CachedFile(byte[] bytes, string contentType)
+    {
+        Response.Headers["Cache-Control"] = "public, max-age=86400";
+        return File(bytes, contentType);
     }
 
     private static byte[]? FindFolderArt(string filePath)

@@ -120,6 +120,9 @@ app.Map("/api/{**path}", async (HttpContext context, string path) =>
         if (response.Content.Headers.ContentType != null)
             context.Response.ContentType = response.Content.Headers.ContentType.ToString();
 
+        if (context.Request.Path.Value?.StartsWith("/api/albumart") == true && (int)response.StatusCode == 200)
+            context.Response.Headers["Cache-Control"] = "public, max-age=86400";
+
         if ((int)response.StatusCode != 204)
             await response.Content.CopyToAsync(context.Response.Body);
     }
