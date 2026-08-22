@@ -442,7 +442,13 @@ var albums = (function () {
                 return res.blob();
             })
             .then(function (blob) {
-                if (!blob) { if (onResult) onResult(false); return; }
+                if (!blob) {
+                    imgEl.classList.add('d-none');
+                    imgEl.src = '';
+                    if (placeholderEl) placeholderEl.style.display = '';
+                    if (onResult) onResult(false);
+                    return;
+                }
                 var url = URL.createObjectURL(blob);
                 imgEl.onload = function () {
                     if (placeholderEl) placeholderEl.style.display = 'none';
