@@ -310,15 +310,13 @@ var albums = (function () {
                         showPauseState();
                         onTrackEnded = null;
                         _randomParams = null;
-                        var dot = document.getElementById('random-indicator-dot');
-                        if (dot) dot.style.background = '#6c757d';
+                        setRandomIndicator(false);
                     }
                 });
                 document.getElementById('alb-prev').addEventListener('click', function () {
                     onTrackEnded = null;
                     _randomParams = null;
-                    var dot = document.getElementById('random-indicator-dot');
-                    if (dot) dot.style.background = '#6c757d';
+                    setRandomIndicator(false);
                     var prev = currentIndex - 1;
                     if (prev < 0) prev = tracks.length - 1;
                     loadTrack(prev);
@@ -326,8 +324,7 @@ var albums = (function () {
                 document.getElementById('alb-next').addEventListener('click', function () {
                     onTrackEnded = null;
                     _randomParams = null;
-                    var dot = document.getElementById('random-indicator-dot');
-                    if (dot) dot.style.background = '#6c757d';
+                    setRandomIndicator(false);
                     var next = currentIndex + 1;
                     if (next >= tracks.length) next = 0;
                     loadTrack(next);
@@ -749,10 +746,18 @@ var albums = (function () {
 
     var _allArtists = [];
 
-    function setRandomIndicator(active) {
+    function randomLabel(params) {
+        if (params && params.artist) return 'Random Artist: ' + params.artist;
+        if (params && params.genre) return 'Random Genre: ' + params.genre;
+        return 'Random';
+    }
+
+    function setRandomIndicator(active, label) {
         var dot = document.getElementById('random-indicator-dot');
         if (!dot) return;
-        dot.style.background = active ? '#198754' : '#6c757d';
+        dot.style.background = active ? '#2CFF05' : '#6c757d';
+        var text = document.getElementById('random-indicator-text');
+        if (text) text.textContent = label || 'Random';
     }
 
     function playRandomTrack(params) {
@@ -795,7 +800,7 @@ var albums = (function () {
                                     return true;
                                 });
                                 albumPlayer.setRandomParams(params);
-                                setRandomIndicator(true);
+                                setRandomIndicator(true, randomLabel(params));
                                 history.pushState({}, '',
                                     '/Albums?artist=' + encodeURIComponent(artist.name));
                             }
@@ -826,7 +831,7 @@ var albums = (function () {
                         });
 
                         albumPlayer.setRandomParams(params);
-                        setRandomIndicator(true);
+                        setRandomIndicator(true, randomLabel(params));
 
                         history.pushState({}, '',
                             '/Albums?artist=' + encodeURIComponent(artist.name) +
