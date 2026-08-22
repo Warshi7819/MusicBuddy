@@ -21,6 +21,12 @@ var albums = (function () {
             return m + ':' + (s < 10 ? '0' : '') + s;
         }
 
+        function refreshDurationDisplay(ts) {
+            if (!ts || ts !== sources[currentIndex]) return;
+            var el = document.getElementById('alb-duration');
+            if (el) el.textContent = formatTime(ts.endpos / 1000);
+        }
+
         function showPlayState() {
             var playBtn = document.getElementById('alb-play');
             var pauseBtn = document.getElementById('alb-pause');
@@ -85,8 +91,9 @@ var albums = (function () {
             ts.audio.addEventListener('canplaythrough', function () {
                 if (ts.loadedHTML5) return;
                 ts.loadedHTML5 = true;
-                if (ts.endpos <= 0 && ts.audio.duration) {
+                if (ts.audio.duration && isFinite(ts.audio.duration)) {
                     ts.endpos = ts.audio.duration * 1000;
+                    refreshDurationDisplay(ts);
                 }
             });
             ts.audio.addEventListener('error', function () {});
@@ -106,9 +113,8 @@ var albums = (function () {
                     if (ts.state === 'none') return;
                     ts.buffer = buf;
                     ts.loadedWebAudio = true;
-                    if (ts.endpos <= 0) {
-                        ts.endpos = buf.duration * 1000;
-                    }
+                    ts.endpos = buf.duration * 1000;
+                    refreshDurationDisplay(ts);
                     if (ts.state === 'playing' && !ts.source) {
                         switchToWebAudio(ts);
                     }
@@ -199,6 +205,7 @@ var albums = (function () {
                     ts.audio.removeEventListener('canplaythrough', handler);
                     if (ts.state === 'loading') {
                         ts.state = 'playing';
+                        ts.lastTick = performance.now();
                         ts.audio.currentTime = ts.position / 1000;
                         ts.audio.play().then(function () {
                             if (ts.state === 'playing') {
