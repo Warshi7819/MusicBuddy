@@ -58,9 +58,9 @@ public class AlbumsController : ControllerBase
     }
 
     [HttpGet("album")]
-    public async Task<IActionResult> GetAlbum([FromQuery] string path)
+    public async Task<IActionResult> GetAlbum([FromQuery] string? path)
     {
-        path = path.TrimStart('/');
+        path = (path ?? "").TrimStart('/');
         var cacheKey = $"albums:detail:{path}";
         if (_memoryCache.TryGetValue(cacheKey, out object? cached) && cached is not null)
             return Ok(cached);

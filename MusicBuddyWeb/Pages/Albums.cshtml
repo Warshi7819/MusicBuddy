@@ -16,9 +16,14 @@
             </a>
             <div id="albums-stats" class="d-none text-muted small"></div>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="albums-refresh-btn">
-            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="random-open-btn" style="display:none;">
+                <i class="bi bi-shuffle me-1"></i>Random
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="albums-refresh-btn">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
     </div>
     <div id="albums-header" class="d-none mb-3">
         <span class="fs-5 fw-semibold" id="albums-artist-name"></span>
@@ -66,6 +71,11 @@
                 <div class="d-flex align-items-center gap-2 mt-2">
                     <i class="bi bi-volume-up text-muted"></i>
                     <input type="range" class="form-range" id="alb-volume" min="0" max="100" value="80" style="width: 100px;">
+                    <span id="random-indicator" class="d-none small text-muted align-items-center gap-1 ms-auto">
+                        <span id="random-indicator-dot" class="d-inline-block rounded-circle"
+                              style="width:8px;height:8px;background:#6c757d;"></span>
+                        Random
+                    </span>
                 </div>
             </div>
         </div>
@@ -77,6 +87,51 @@
 
 <div id="albums-empty" class="d-none text-muted py-4">
     <i class="bi bi-music-note-beamed me-1"></i>No albums found.
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="random-offcanvas">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title"><i class="bi bi-shuffle me-2"></i>Random Play</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <a href="#" class="list-group-item list-group-item-action mb-3 fw-semibold" id="random-play-any">
+            <i class="bi bi-shuffle me-2"></i>Random Song (any)
+        </a>
+        <div class="accordion" id="random-accordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#random-artists-body" aria-expanded="false">
+                        <i class="bi bi-people me-2"></i>Artists <small class="text-muted ms-1" id="random-artist-count"></small>
+                    </button>
+                </h2>
+                <div id="random-artists-body" class="accordion-collapse collapse" data-bs-parent="#random-accordion">
+                    <div class="accordion-body p-2">
+                        <input type="text" class="form-control form-control-sm mb-2" id="random-artist-search"
+                               placeholder="Search artists...">
+                        <div class="list-group list-group-flush" id="random-artist-list"
+                             style="max-height:300px;overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#random-genres-body" aria-expanded="false">
+                        <i class="bi bi-tag me-2"></i>Genres <small class="text-muted ms-1" id="random-genre-count"></small>
+                    </button>
+                </h2>
+                <div id="random-genres-body" class="accordion-collapse collapse" data-bs-parent="#random-accordion">
+                    <div class="accordion-body p-2">
+                        <input type="text" class="form-control form-control-sm mb-2" id="random-genre-search"
+                               placeholder="Search genres...">
+                        <div class="list-group list-group-flush" id="random-genre-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

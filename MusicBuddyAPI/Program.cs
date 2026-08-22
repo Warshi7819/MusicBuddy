@@ -14,6 +14,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<FileCacheService>();
 builder.Services.AddSingleton<AlbumCatalogService>();
+builder.Services.AddSingleton<RandomTrackService>();
 builder.Services.AddHostedService<AlbumCacheWarmer>();
 
 builder.Services.AddDbContext<MusicBuddyDbContext>(options =>
