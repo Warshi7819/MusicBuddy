@@ -7,7 +7,7 @@
 
 <h2 class="mb-2"><i class="bi bi-heart"></i> Credits</h2>
 <p class="text-muted mb-4">
-    Acknowledgements for open-source projects used in MusicBuddy.
+    Acknowledgements for open-source projects and services used in MusicBuddy.
 </p>
 
 <h4 class="mb-3">Audio Playback</h4>
@@ -75,6 +75,38 @@
         <p class="card-text"><small class="text-muted">Apache-2.0 License</small></p>
         <a href="https://github.com/mebjas/html5-qrcode" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-github me-1"></i>View on GitHub
+        </a>
+    </div>
+</div>
+
+<h4 class="mb-3">Barcode Lookup</h4>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">iTunes Search API</h5>
+        <p class="card-text">
+            Album artwork and metadata are looked up via the
+            <a href="https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/Searching.html" target="_blank" rel="noopener">iTunes Search API</a>
+            by Apple. No API key is required. The scanner queries multiple countries (US, DK, GB) to find the best match for a scanned barcode.
+        </p>
+        <p class="card-text"><small class="text-muted">Free — no key required</small></p>
+        <a href="https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/Searching.html" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-book me-1"></i>View Documentation
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Discogs</h5>
+        <p class="card-text">
+            When iTunes doesn't have a match, the scanner falls back to the
+            <a href="https://www.discogs.com/developers/" target="_blank" rel="noopener">Discogs API</a>
+            — a crowdsourced music database. Requires a personal access token, which can be configured in Settings → API Keys.
+        </p>
+        <p class="card-text"><small class="text-muted">Requires personal access token</small></p>
+        <a href="https://www.discogs.com/developers/" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-book me-1"></i>View Documentation
         </a>
     </div>
 </div>
