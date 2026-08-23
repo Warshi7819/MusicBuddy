@@ -754,8 +754,8 @@ var albums = (function () {
     var _allArtists = [];
 
     function randomLabel(params) {
-        if (params && params.artist) return 'Random Artist: ' + params.artist;
-        if (params && params.genre) return 'Random Genre: ' + params.genre;
+        if (params && params.artist) return 'Random - Artist: ' + params.artist;
+        if (params && params.genre) return 'Random - Genre: ' + params.genre;
         return 'Random';
     }
 
