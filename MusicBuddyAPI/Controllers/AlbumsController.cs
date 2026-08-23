@@ -82,11 +82,15 @@ public class AlbumsController : ControllerBase
                 try
                 {
                     using var tagFile = TagLib.File.Create(fullPath);
+                    var tagTitle = tagFile.Tag.Title;
+                    var tagPerformer = tagFile.Tag.Performers?.FirstOrDefault();
                     track = new TrackDto
                     {
                         Name = file.Name,
                         Path = file.Path,
-                        DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds
+                        DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds,
+                        Title = string.IsNullOrWhiteSpace(tagTitle) ? null : tagTitle,
+                        Artist = string.IsNullOrWhiteSpace(tagPerformer) ? null : tagPerformer
                     };
 
                     if (albumArtist is null || year is null || genre is null)
@@ -102,7 +106,7 @@ public class AlbumsController : ControllerBase
                 }
                 catch
                 {
-                    track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0 };
+                    track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0, Title = file.Name, Artist = null };
                 }
 
                 tracks.Add(track);
@@ -144,4 +148,6 @@ public class TrackDto
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public int DurationSeconds { get; set; }
+    public string? Title { get; set; }
+    public string? Artist { get; set; }
 }

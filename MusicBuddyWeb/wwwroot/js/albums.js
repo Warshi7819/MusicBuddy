@@ -73,6 +73,8 @@ var albums = (function () {
             var ts = {
                 path: track.path,
                 name: track.name,
+                title: track.title || track.name,
+                artist: track.artist || '',
                 duration: track.durationSeconds,
                 audio: new Audio(),
                 buffer: null,
@@ -258,7 +260,15 @@ var albums = (function () {
         }
 
         function updateUIForTrack(ts) {
-            document.getElementById('alb-now-title').textContent = ts.name;
+            document.getElementById('alb-now-title').textContent = ts.title;
+            var artistEl = document.getElementById('alb-now-artist');
+            if (ts.artist) {
+                artistEl.textContent = '\u2014 ' + ts.artist;
+                artistEl.style.display = '';
+            } else {
+                artistEl.textContent = '';
+                artistEl.style.display = 'none';
+            }
             document.getElementById('alb-time').textContent = '0:00';
             document.getElementById('alb-duration').textContent = formatTime(ts.duration);
             document.getElementById('alb-seek-fill').style.width = '0%';
