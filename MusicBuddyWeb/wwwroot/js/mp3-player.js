@@ -89,8 +89,14 @@ var mp3Player = (function () {
                 if (!blob) return;
                 var url = URL.createObjectURL(blob);
                 img.onload = function () {
-                    placeholder.style.display = 'none';
-                    img.style.display = '';
+                    if (img.naturalWidth === 1 && img.naturalHeight === 1) {
+                        placeholder.style.display = '';
+                        img.style.display = 'none';
+                    } else {
+                        placeholder.style.display = 'none';
+                        img.style.display = '';
+                    }
+                    URL.revokeObjectURL(url);
                 };
                 img.src = url;
             })

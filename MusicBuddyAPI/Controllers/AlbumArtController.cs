@@ -9,6 +9,8 @@ namespace MusicBuddyAPI.Controllers;
 [Authorize]
 public class AlbumArtController : ControllerBase
 {
+    private const string CacheControlHeader = "public, max-age=604800";
+
     private readonly AlbumArtExtractor _extractor;
 
     public AlbumArtController(AlbumArtExtractor extractor)
@@ -23,9 +25,30 @@ public class AlbumArtController : ControllerBase
             return BadRequest(new { message = "path is required" });
 
         var result = await _extractor.GetAsync(path, HttpContext.RequestAborted);
-        if (result is null) return NoContent();
 
-        Response.Headers["Cache-Control"] = "public, max-age=86400";
-        return File(result.Value.Bytes, result.Value.MimeType);
+        byte[] bytes;
+        string mimeType;
+        string etag;
+        if (result is null)
+        {
+            bytes = AlbumArtExtractor.PlaceholderPng;
+            mimeType = "image/png";
+            etag = AlbumArtExtractor.PlaceholderEtag;
+        }
+        else
+        {
+            bytes = result.Value.Bytes;
+            mimeType = result.Value.MimeType;
+            etag = result.Value.Etag;
+        }
+
+        Response.Headers.CacheControl = CacheControlHeader;
+        Response.Headers.ETag = etag;
+
+        var incoming = Request.Headers.IfNoneMatch.ToString();
+        if (!string.IsNullOrEmpty(incoming) && incoming == etag)
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        return File(bytes, mimeType);
     }
 }

@@ -110,6 +110,10 @@ app.Map("/api/{**path}", async (HttpContext context, string path, IHttpClientFac
     if (!string.IsNullOrEmpty(authCookie))
         upstream.Headers.TryAddWithoutValidation("Cookie", $"MusicBuddyAuth={authCookie}");
 
+    var ifNoneMatch = context.Request.Headers.IfNoneMatch.ToString();
+    if (!string.IsNullOrEmpty(ifNoneMatch))
+        upstream.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+
     if (context.Request.ContentLength > 0 || context.Request.ContentType != null)
     {
         using var reader = new StreamReader(context.Request.Body);
@@ -126,10 +130,14 @@ app.Map("/api/{**path}", async (HttpContext context, string path, IHttpClientFac
         if (response.Content.Headers.ContentType != null)
             context.Response.ContentType = response.Content.Headers.ContentType.ToString();
 
-        if (context.Request.Path.Value?.StartsWith("/api/albumart") == true && (int)response.StatusCode == 200)
-            context.Response.Headers["Cache-Control"] = "public, max-age=86400";
+        if (response.Headers.ETag != null)
+            context.Response.Headers.ETag = response.Headers.ETag.ToString();
 
-        if ((int)response.StatusCode != 204)
+        if (context.Request.Path.Value?.StartsWith("/api/albumart") == true &&
+            ((int)response.StatusCode == 200 || (int)response.StatusCode == 304))
+            context.Response.Headers["Cache-Control"] = "public, max-age=604800";
+
+        if ((int)response.StatusCode != 204 && (int)response.StatusCode != 304)
             await response.Content.CopyToAsync(context.Response.Body);
     }
     catch (Exception ex)

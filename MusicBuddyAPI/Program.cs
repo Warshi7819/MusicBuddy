@@ -17,6 +17,7 @@ builder.Services.AddSingleton<AlbumCatalogService>();
 builder.Services.AddSingleton<RandomTrackService>();
 builder.Services.AddSingleton<TagLibThrottle>();
 builder.Services.AddSingleton<AlbumArtExtractor>();
+builder.Services.AddSingleton<ArtistArtPrewarmer>();
 builder.Services.AddHostedService<AlbumCacheWarmer>();
 
 builder.Services.AddDbContext<MusicBuddyDbContext>(options =>

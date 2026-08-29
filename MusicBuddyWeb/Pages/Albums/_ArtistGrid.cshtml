@@ -41,7 +41,9 @@
                     <img class="album-art"
                          src="/api/albumart?path=@Uri.EscapeDataString(artPath)"
                          loading="lazy"
+                         decoding="async"
                          alt="@artist.Name"
+                         onload="if(this.naturalWidth===1&&this.naturalHeight===1){this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='';}"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='';">
                 }
                 <div class="album-art-placeholder" @(artPath is not null ? Html.Raw("style=\"display:none\"") : "")>

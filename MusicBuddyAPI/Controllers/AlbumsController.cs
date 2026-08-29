@@ -14,6 +14,7 @@ public class AlbumsController : ControllerBase
     private readonly FileCacheService _cache;
     private readonly IMemoryCache _memoryCache;
     private readonly TagLibThrottle _throttle;
+    private readonly ArtistArtPrewarmer _artPrewarmer;
     private readonly ILogger<AlbumsController> _logger;
 
     public AlbumsController(
@@ -21,12 +22,14 @@ public class AlbumsController : ControllerBase
         FileCacheService cache,
         IMemoryCache memoryCache,
         TagLibThrottle throttle,
+        ArtistArtPrewarmer artPrewarmer,
         ILogger<AlbumsController> logger)
     {
         _catalog = catalog;
         _cache = cache;
         _memoryCache = memoryCache;
         _throttle = throttle;
+        _artPrewarmer = artPrewarmer;
         _logger = logger;
     }
 
@@ -51,6 +54,7 @@ public class AlbumsController : ControllerBase
         try
         {
             await _catalog.RefreshAsync();
+            await _artPrewarmer.PrewarmAsync(HttpContext.RequestAborted);
             return NoContent();
         }
         catch (Exception ex)

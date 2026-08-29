@@ -54,7 +54,9 @@
                     <img class="album-art"
                          src="/api/albumart?path=@Uri.EscapeDataString(Model.Tracks[0].Path)"
                          loading="lazy"
+                         decoding="async"
                          alt="@Model.AlbumName"
+                         onload="if(this.naturalWidth===1&&this.naturalHeight===1){this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='';}"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='';">
                 }
                 <div class="album-art-placeholder" @(Model.Tracks.Count > 0 ? Html.Raw("style=\"display:none\"") : "")>
