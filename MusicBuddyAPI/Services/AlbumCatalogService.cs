@@ -10,7 +10,7 @@ public class AlbumCatalogService
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<AlbumCatalogService> _logger;
     private readonly SemaphoreSlim _scanLock = new(1, 1);
-    private Task<object>? _warmTask;
+    private Task<AlbumCatalogPayload>? _warmTask;
 
     public AlbumCatalogService(
         FileCacheService fileCache,
@@ -22,9 +22,9 @@ public class AlbumCatalogService
         _logger = logger;
     }
 
-    public async Task<object> GetPayloadAsync()
+    public async Task<AlbumCatalogPayload> GetPayloadAsync()
     {
-        if (_memoryCache.TryGetValue(CacheKey, out object? cached) && cached is not null)
+        if (_memoryCache.TryGetValue(CacheKey, out AlbumCatalogPayload? cached) && cached is not null)
             return cached;
 
         var warmTask = _warmTask;
@@ -33,12 +33,12 @@ public class AlbumCatalogService
         return await WarmAsync();
     }
 
-    public async Task<object> WarmAsync()
+    public async Task<AlbumCatalogPayload> WarmAsync()
     {
         await _scanLock.WaitAsync();
         try
         {
-            if (_memoryCache.TryGetValue(CacheKey, out object? cached) && cached is not null)
+            if (_memoryCache.TryGetValue(CacheKey, out AlbumCatalogPayload? cached) && cached is not null)
                 return cached;
 
             if (_warmTask is not null) return await _warmTask;
@@ -75,7 +75,7 @@ public class AlbumCatalogService
         }
     }
 
-    private async Task<object> ScanAsync()
+    private async Task<AlbumCatalogPayload> ScanAsync()
     {
         return await Task.Run(() =>
         {
@@ -85,7 +85,7 @@ public class AlbumCatalogService
             if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             {
                 _logger.LogWarning("Album catalog: MP3 root missing or empty ({Root}), returning empty catalog", root);
-                var empty = new { artists = new List<ArtistDto>() };
+                var empty = new AlbumCatalogPayload();
                 _memoryCache.Set(CacheKey, empty);
                 return empty;
             }
@@ -156,7 +156,7 @@ public class AlbumCatalogService
 
             artists = artists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
-            var payload = new { artists };
+            var payload = new AlbumCatalogPayload { Artists = artists };
             _memoryCache.Set(CacheKey, payload);
 
             _logger.LogInformation("Album catalog scan complete: {Count} artists, {AlbumCount} albums",
@@ -164,6 +164,11 @@ public class AlbumCatalogService
             return payload;
         });
     }
+}
+
+public class AlbumCatalogPayload
+{
+    public List<ArtistDto> Artists { get; set; } = new();
 }
 
 public class ArtistDto

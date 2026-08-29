@@ -13,17 +13,20 @@ public class AlbumsController : ControllerBase
     private readonly AlbumCatalogService _catalog;
     private readonly FileCacheService _cache;
     private readonly IMemoryCache _memoryCache;
+    private readonly TagLibThrottle _throttle;
     private readonly ILogger<AlbumsController> _logger;
 
     public AlbumsController(
         AlbumCatalogService catalog,
         FileCacheService cache,
         IMemoryCache memoryCache,
+        TagLibThrottle throttle,
         ILogger<AlbumsController> logger)
     {
         _catalog = catalog;
         _cache = cache;
         _memoryCache = memoryCache;
+        _throttle = throttle;
         _logger = logger;
     }
 
@@ -73,43 +76,54 @@ public class AlbumsController : ControllerBase
             uint? year = null;
             string? genre = null;
 
-            foreach (var file in listing.Files)
+            var ct = HttpContext.RequestAborted;
+            await _throttle.Detail.WaitAsync(ct);
+            try
             {
-                var fullPath = _cache.ResolveFilePath(file.Path);
-                if (fullPath is null) continue;
-
-                TrackDto? track = null;
-                try
+                foreach (var file in listing.Files)
                 {
-                    using var tagFile = TagLib.File.Create(fullPath);
-                    var tagTitle = tagFile.Tag.Title;
-                    var tagPerformer = tagFile.Tag.Performers?.FirstOrDefault();
-                    track = new TrackDto
-                    {
-                        Name = file.Name,
-                        Path = file.Path,
-                        DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds,
-                        Title = string.IsNullOrWhiteSpace(tagTitle) ? null : tagTitle,
-                        Artist = string.IsNullOrWhiteSpace(tagPerformer) ? null : tagPerformer
-                    };
+                    ct.ThrowIfCancellationRequested();
 
-                    if (albumArtist is null || year is null || genre is null)
+                    var fullPath = _cache.ResolveFilePath(file.Path);
+                    if (fullPath is null) continue;
+
+                    TrackDto? track = null;
+                    try
                     {
-                        var aa = tagFile.Tag.AlbumArtists?.FirstOrDefault()
-                                 ?? tagFile.Tag.Performers?.FirstOrDefault();
-                        var g = tagFile.Tag.Genres?.FirstOrDefault();
-                        var y = tagFile.Tag.Year > 0 ? tagFile.Tag.Year : (uint?)null;
-                        albumArtist ??= string.IsNullOrWhiteSpace(aa) ? null : aa;
-                        year ??= y;
-                        genre ??= string.IsNullOrWhiteSpace(g) ? null : g;
+                        using var tagFile = TagLib.File.Create(fullPath);
+                        var tagTitle = tagFile.Tag.Title;
+                        var tagPerformer = tagFile.Tag.Performers?.FirstOrDefault();
+                        track = new TrackDto
+                        {
+                            Name = file.Name,
+                            Path = file.Path,
+                            DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds,
+                            Title = string.IsNullOrWhiteSpace(tagTitle) ? null : tagTitle,
+                            Artist = string.IsNullOrWhiteSpace(tagPerformer) ? null : tagPerformer
+                        };
+
+                        if (albumArtist is null || year is null || genre is null)
+                        {
+                            var aa = tagFile.Tag.AlbumArtists?.FirstOrDefault()
+                                     ?? tagFile.Tag.Performers?.FirstOrDefault();
+                            var g = tagFile.Tag.Genres?.FirstOrDefault();
+                            var y = tagFile.Tag.Year > 0 ? tagFile.Tag.Year : (uint?)null;
+                            albumArtist ??= string.IsNullOrWhiteSpace(aa) ? null : aa;
+                            year ??= y;
+                            genre ??= string.IsNullOrWhiteSpace(g) ? null : g;
+                        }
                     }
-                }
-                catch
-                {
-                    track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0, Title = file.Name, Artist = null };
-                }
+                    catch
+                    {
+                        track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0, Title = file.Name, Artist = null };
+                    }
 
-                tracks.Add(track);
+                    tracks.Add(track);
+                }
+            }
+            finally
+            {
+                _throttle.Detail.Release();
             }
 
             var result = new AlbumDetailDto
@@ -124,6 +138,10 @@ public class AlbumsController : ControllerBase
 
             _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
             return Ok(result);
+        }
+        catch (OperationCanceledException)
+        {
+            return NoContent();
         }
         catch (Exception ex)
         {

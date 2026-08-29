@@ -24,6 +24,11 @@ builder.Services.AddHttpClient("MusicBuddyAPI", client =>
     client.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"] ?? "http://localhost:5277");
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 
+builder.Services.AddHttpClient("ApiProxy", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 var keyPath = builder.Configuration["DataProtection:KeyPath"];
 if (string.IsNullOrEmpty(keyPath))
 {
@@ -92,17 +97,18 @@ app.MapRazorPages();
 var apiBase = builder.Configuration["Api:BaseUrl"] ?? "http://localhost:5277";
 var proxyLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("ApiProxy");
 
-app.Map("/api/{**path}", async (HttpContext context, string path) =>
+app.Map("/api/{**path}", async (HttpContext context, string path, IHttpClientFactory factory) =>
 {
     var targetUrl = $"{apiBase}/api/{path}{context.Request.QueryString}";
     proxyLogger.LogInformation("Proxy {Method} {Path} -> {TargetUrl}", context.Request.Method, context.Request.Path, targetUrl);
 
-    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-    var authCookie = context.Request.Cookies["MusicBuddyAuth"];
-    if (!string.IsNullOrEmpty(authCookie))
-        client.DefaultRequestHeaders.Add("Cookie", $"MusicBuddyAuth={authCookie}");
+    var client = factory.CreateClient("ApiProxy");
 
     using var upstream = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
+
+    var authCookie = context.Request.Cookies["MusicBuddyAuth"];
+    if (!string.IsNullOrEmpty(authCookie))
+        upstream.Headers.TryAddWithoutValidation("Cookie", $"MusicBuddyAuth={authCookie}");
 
     if (context.Request.ContentLength > 0 || context.Request.ContentType != null)
     {
