@@ -93,6 +93,7 @@ var albumPlayer = (function () {
         };
 
         ts.audio.preload = 'auto';
+        ts.audio.volume = volumeGain ? volumeGain.gain.value : 1;
         ts.audio.addEventListener('canplaythrough', function () {
             if (ts.loadedHTML5) return;
             ts.loadedHTML5 = true;
@@ -206,8 +207,8 @@ var albumPlayer = (function () {
             }).catch(function () {});
         } else {
             ts.state = 'loading';
-            ts.audio.addEventListener('canplaythrough', function handler() {
-                ts.audio.removeEventListener('canplaythrough', handler);
+            var startHtml5 = function () {
+                ts.audio.removeEventListener('canplay', startHtml5);
                 if (ts.state === 'loading') {
                     ts.state = 'playing';
                     ts.lastTick = performance.now();
@@ -218,7 +219,12 @@ var albumPlayer = (function () {
                         }
                     }).catch(function () {});
                 }
-            });
+            };
+            if (ts.audio.readyState >= 2) {
+                startHtml5();
+            } else {
+                ts.audio.addEventListener('canplay', startHtml5);
+            }
         }
     }
 
@@ -376,6 +382,10 @@ var albumPlayer = (function () {
     controlScope.addEventListener('input', function (e) {
         if (e.target && e.target.id === 'alb-volume' && volumeGain) {
             volumeGain.gain.value = e.target.value / 100;
+            var v = e.target.value / 100;
+            for (var i = 0; i < sources.length; i++) {
+                if (sources[i].audio) sources[i].audio.volume = v;
+            }
         }
     }, true);
 

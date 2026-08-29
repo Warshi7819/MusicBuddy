@@ -150,56 +150,54 @@ public class PlaylistsController : ControllerBase
     [HttpPut("{id}/tracks/reorder")]
     public async Task<IActionResult> ReorderTracks(int id, List<ReorderTrackRequest> reorder)
     {
-        var playlist = await _db.Playlists
-            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == CurrentUserId);
-        if (playlist is null) return NotFound();
+        if (!await _db.Playlists.AnyAsync(p => p.Id == id && p.UserId == CurrentUserId))
+            return NotFound();
 
         foreach (var item in reorder)
         {
-            var track = await _db.PlaylistTracks
-                .FirstOrDefaultAsync(t => t.Id == item.Id && t.PlaylistId == id);
-            if (track is not null)
-            {
-                track.SortOrder = item.SortOrder;
-            }
+            await _db.PlaylistTracks
+                .Where(t => t.Id == item.Id && t.PlaylistId == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.SortOrder, item.SortOrder));
         }
 
-        playlist.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.Playlists
+            .Where(p => p.Id == id && p.UserId == CurrentUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+
         return NoContent();
     }
 
     [HttpDelete("{id}/tracks/{trackId}")]
     public async Task<IActionResult> RemoveTrack(int id, int trackId)
     {
-        var playlist = await _db.Playlists
-            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == CurrentUserId);
-        if (playlist is null) return NotFound();
+        if (!await _db.Playlists.AnyAsync(p => p.Id == id && p.UserId == CurrentUserId))
+            return NotFound();
 
-        var track = await _db.PlaylistTracks
-            .FirstOrDefaultAsync(t => t.Id == trackId && t.PlaylistId == id);
-        if (track is null) return NotFound();
+        await _db.PlaylistTracks
+            .Where(t => t.Id == trackId && t.PlaylistId == id)
+            .ExecuteDeleteAsync();
 
-        _db.PlaylistTracks.Remove(track);
-        playlist.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.Playlists
+            .Where(p => p.Id == id && p.UserId == CurrentUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+
         return NoContent();
     }
 
     [HttpDelete("{id}/tracks")]
     public async Task<IActionResult> ClearTracks(int id)
     {
-        var playlist = await _db.Playlists
-            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == CurrentUserId);
-        if (playlist is null) return NotFound();
+        if (!await _db.Playlists.AnyAsync(p => p.Id == id && p.UserId == CurrentUserId))
+            return NotFound();
 
-        var tracks = await _db.PlaylistTracks
+        await _db.PlaylistTracks
             .Where(t => t.PlaylistId == id)
-            .ToListAsync();
+            .ExecuteDeleteAsync();
 
-        _db.PlaylistTracks.RemoveRange(tracks);
-        playlist.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.Playlists
+            .Where(p => p.Id == id && p.UserId == CurrentUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+
         return NoContent();
     }
 }

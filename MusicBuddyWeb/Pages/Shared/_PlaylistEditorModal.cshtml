@@ -122,6 +122,7 @@
         var libraryFiles = [];
         var previewContext = [];
         var previewIndex = -1;
+        var pendingRemoves = new Set();
 
         function $(id) { return document.getElementById(id); }
         function flashSaved() {
@@ -365,14 +366,19 @@
         }
 
         function removeTrack(trackId) {
-            if (!currentPlaylistId) return;
+            if (!currentPlaylistId || pendingRemoves.has(trackId)) return;
+            pendingRemoves.add(trackId);
             apiFetch('/api/playlists/' + currentPlaylistId + '/tracks/' + trackId, { method: 'DELETE' })
                 .then(function () {
+                    pendingRemoves.delete(trackId);
                     htmx.ajax('GET', '/Playlists/PlaylistEditor?handler=TrackList&playlistId=' + currentPlaylistId, {
                         target: '#pe-tracks', swap: 'innerHTML'
                     });
                     flashSaved();
-                }).catch(function (err) { toast(err.message, true); });
+                }).catch(function (err) {
+                    pendingRemoves.delete(trackId);
+                    toast(err.message, true);
+                });
         }
 
         function addSelectedToPlaylist() {
