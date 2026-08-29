@@ -7,7 +7,7 @@ var sidPlayer = (function () {
     var updateInterval = null;
     var preferredModel = null;
     var onTrackEnded = null;
-    var onTrackChanged = null;
+    var onTrackChangedCallbacks = [];
     var tuneLoaded = false;
 
     function formatTime(sec) {
@@ -24,10 +24,7 @@ var sidPlayer = (function () {
         playlist.forEach(function (f, i) {
             var item = document.createElement('button');
             item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
-            item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
-                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
-                '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
-                '</div>';
+            item.innerHTML = '<span class="text-truncate">' + escapeHtml(f.name) + '</span>';
             item.addEventListener('click', function () { loadTrack(i); });
             el.appendChild(item);
         });
@@ -37,12 +34,6 @@ var sidPlayer = (function () {
         var d = document.createElement('div');
         d.appendChild(document.createTextNode(s));
         return d.innerHTML;
-    }
-
-    function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
     function sanitizePetSCII(str) {
@@ -58,13 +49,15 @@ var sidPlayer = (function () {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
         renderPlaylist();
-        playFile(playlist[index]);
+        playFile(playlist[index], index);
     }
 
-    function playFile(file) {
+    function playFile(file, index) {
         subtune = 0;
         tuneLoaded = true;
-        if (onTrackChanged) onTrackChanged(file);
+        if (onTrackChangedCallbacks.length) {
+            for (var c = 0; c < onTrackChangedCallbacks.length; c++) onTrackChangedCallbacks[c](file, index);
+        }
         document.getElementById('sid-title').textContent = file.name;
         document.getElementById('sid-author').textContent = '';
         document.getElementById('sid-info').textContent = 'Loading...';
@@ -112,39 +105,50 @@ var sidPlayer = (function () {
         playing = false;
     }
 
+    function resumePlayback() {
+        if (!player) return;
+        player.playcont();
+        showPlayState();
+    }
+
     function normalizeTrack(track) {
         return {
             name: track.name || track.fileName || '',
             path: track.path || track.filePath || '',
-            size: track.size || track.fileSize || 0
+            channelCount: track.channelCount || 2
         };
+    }
+
+    function createPlayer() {
+        var p = new jsSID(16384, 0.0005);
+        p.setloadcallback(function () {
+            var author = sanitizePetSCII(p.getauthor());
+            var info = sanitizePetSCII(p.getinfo());
+            document.getElementById('sid-author').textContent =
+                author ? author + ' — ' + info : info;
+            document.getElementById('sid-info').textContent = '';
+            updateSubtuneUI();
+            syncModelUI();
+        });
+        p.setstartcallback(function () {
+            showPlayState();
+            if (p.getplaytime() > 0) {
+                document.getElementById('sid-duration').textContent = formatTime(p.getplaytime());
+            }
+        });
+        p.setendcallback(function () {
+            if (onTrackEnded && onTrackEnded()) return;
+            var next = currentIndex + 1;
+            if (next >= playlist.length) next = 0;
+            loadTrack(next);
+        }, 0);
+        return p;
     }
 
     return {
         init: function (files) {
             playlist = files;
-            player = new jsSID(16384, 0.0005);
-            player.setloadcallback(function () {
-                var author = sanitizePetSCII(player.getauthor());
-                var info = sanitizePetSCII(player.getinfo());
-                document.getElementById('sid-author').textContent =
-                    author ? author + ' — ' + info : info;
-                document.getElementById('sid-info').textContent = '';
-                updateSubtuneUI();
-                syncModelUI();
-            });
-            player.setstartcallback(function () {
-                showPlayState();
-                if (player.getplaytime() > 0) {
-                    document.getElementById('sid-duration').textContent = formatTime(player.getplaytime());
-                }
-            });
-            player.setendcallback(function () {
-                if (onTrackEnded && onTrackEnded()) return;
-                var next = currentIndex + 1;
-                if (next >= playlist.length) next = 0;
-                loadTrack(next);
-            }, 0);
+            player = createPlayer();
 
             renderPlaylist();
 
@@ -176,15 +180,26 @@ var sidPlayer = (function () {
                 if (currentIndex < 0 && playlist.length > 0) {
                     loadTrack(0);
                 } else if (player) {
-                    player.playcont();
-                    showPlayState();
+                    resumePlayback();
                 }
             });
             document.getElementById('sid-pause').addEventListener('click', function () {
                 if (player) { player.pause(); showPauseState(); }
             });
             document.getElementById('sid-stop').addEventListener('click', function () {
-                if (player) { player.stop(); showPauseState(); }
+                if (!player) { showPauseState(); return; }
+                if (currentIndex < 0 && !tuneLoaded) { showPauseState(); return; }
+                if (player.aCtx && typeof player.aCtx.close === 'function') {
+                    try { player.aCtx.close(); } catch (e) {}
+                }
+                player = createPlayer();
+                tuneLoaded = false;
+                subtune = 0;
+                showPauseState();
+                document.getElementById('sid-time').textContent = '0:00';
+                document.getElementById('sid-duration').textContent = '';
+                document.getElementById('sid-seek-fill').style.width = '0%';
+                document.getElementById('sid-subtune').textContent = '-/-';
             });
             document.getElementById('sid-prev').addEventListener('click', function () {
                 var prev = currentIndex - 1;
@@ -254,7 +269,7 @@ var sidPlayer = (function () {
             for (var i = 0; i < playlist.length; i++) {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
-            playFile({ name: path.split('/').pop(), path: path, size: 0 });
+            playFile({ name: path.split('/').pop(), path: path });
         },
 
         selectByPath: function (path) {
@@ -279,7 +294,7 @@ var sidPlayer = (function () {
         },
 
         setOnTrackChanged: function (fn) {
-            onTrackChanged = fn;
+            if (onTrackChangedCallbacks.indexOf(fn) === -1) onTrackChangedCallbacks.push(fn);
         },
 
         getTransportState: function () {
@@ -298,7 +313,19 @@ var sidPlayer = (function () {
             if (!player) return;
             if (currentIndex >= 0 && !tuneLoaded) { loadTrack(currentIndex); return; }
             if (playing) { player.pause(); showPauseState(); }
-            else { player.playcont(); showPlayState(); }
+            else { resumePlayback(); }
+        },
+
+        play: function () {
+            if (!player) return;
+            if (currentIndex < 0 && playlist.length > 0) { loadTrack(0); return; }
+            if (currentIndex >= 0 && !tuneLoaded) { loadTrack(currentIndex); return; }
+            if (!playing) { resumePlayback(); }
+        },
+
+        pause: function () {
+            if (!player) return;
+            if (playing) { player.pause(); showPauseState(); }
         },
 
         prev: function () {

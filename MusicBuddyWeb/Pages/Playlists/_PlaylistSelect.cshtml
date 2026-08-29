@@ -1,0 +1,14 @@
+@model PlaylistSelectModel
+
+<option value="">-- Select playlist --</option>
+@foreach (var p in Model.Playlists.OrderByDescending(p => p.UpdatedAt))
+{
+    if (p.Id == Model.SelectedId)
+    {
+        <option value="@p.Id" selected="selected">@p.Name</option>
+    }
+    else
+    {
+        <option value="@p.Id">@p.Name</option>
+    }
+}

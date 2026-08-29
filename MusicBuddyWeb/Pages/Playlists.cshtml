@@ -34,7 +34,8 @@
                 <option value="mp3">MP3</option>
                 <option value="sid">SID</option>
             </select>
-            <button type="button" class="btn btn-primary" id="pm-open-editor-btn">
+            <button type="button" class="btn btn-primary" id="pm-open-editor-btn"
+                    onclick="playlistEditor.open({ fileType: document.getElementById('pm-type-select').value })">
                 <i class="bi bi-pencil-square me-1"></i>Open Playlist Manager
             </button>
         </div>
@@ -43,22 +44,13 @@
 
 @section Scripts {
     <partial name="Shared/_PlaylistEditorModal" />
-    <script src="~/js/resume-cookie.js" asp-append-version="true"></script>
-    <script src="~/js/playlist-editor.js" asp-append-version="true"></script>
     <script>
         (function () {
             var typeSelect = document.getElementById('pm-type-select');
-            var openBtn = document.getElementById('pm-open-editor-btn');
-
-            function openEditor() {
-                playlistEditor.open({ fileType: typeSelect.value });
-            }
-
-            openBtn.addEventListener('click', openEditor);
-
-            typeSelect.addEventListener('change', openEditor);
-
-            openEditor();
+            typeSelect.addEventListener('change', function () {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
+            });
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
         })();
     </script>
 }

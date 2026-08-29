@@ -1,0 +1,55 @@
+@model LibraryBrowserModel
+
+@if (Model.Listing.Directories.Count > 0)
+{
+    <div class="pe-section-header">Directories</div>
+    @foreach (var dir in Model.Listing.Directories)
+    {
+        <div class="list-group-item pe-library-row d-flex align-items-center"
+             draggable="true"
+             data-kind="album"
+             data-path="@dir.Path"
+             data-name="@dir.Name">
+            <input type="checkbox" class="form-check-input me-2 pe-check" aria-label="Select directory">
+            <i class="bi bi-folder-fill text-warning me-2"></i>
+            <span class="text-truncate flex-grow-1">@dir.Name</span>
+            <span class="badge text-bg-secondary">Directory</span>
+        </div>
+    }
+}
+
+@if (Model.Listing.Files.Count > 0)
+{
+    <div class="pe-section-header">Files (@Model.Listing.Files.Count)</div>
+    @foreach (var file in Model.Listing.Files)
+    {
+        <div class="list-group-item pe-library-row d-flex align-items-center"
+             draggable="true"
+             data-kind="file"
+             data-path="@file.Path"
+             data-name="@file.Name"
+             data-size="@file.Size"
+             data-channel-count="@file.ChannelCount">
+            <input type="checkbox" class="form-check-input me-2 pe-check" aria-label="Select file">
+            <i class="bi bi-file-earmark-music text-primary me-2"></i>
+            <button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"
+                    data-path="@file.Path"><i class="bi bi-play-circle"></i></button>
+            <span class="text-truncate flex-grow-1">@file.Name</span>
+            <small class="text-nowrap text-muted ms-2">@FormatSize(file.Size)</small>
+        </div>
+    }
+}
+
+@if (Model.Listing.Directories.Count == 0 && Model.Listing.Files.Count == 0)
+{
+    <div class="text-center text-muted py-4">Empty folder</div>
+}
+
+@functions {
+    string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / 1048576.0:F1} MB";
+    }
+}

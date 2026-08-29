@@ -83,7 +83,11 @@
                     <span class="badge bg-secondary" id="mp3-count">0</span>
                 </div>
                 <div class="d-flex gap-2">
-                    <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;">
+                    <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;"
+                            hx-get="/Playlists/PlaylistEditor?handler=PlaylistList&type=mp3"
+                            hx-trigger="load, revealed"
+                            hx-swap="innerHTML"
+                            hx-on::after-request="mp3Bridge.onPlaylistListLoaded(this)">
                         <option value="">-- All files --</option>
                     </select>
                     <button type="button" class="btn btn-sm btn-outline-primary" id="pm-manage-btn" title="Open playlist manager">
@@ -101,44 +105,64 @@
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
     <script src="~/js/resume-cookie.js" asp-append-version="true"></script>
-    <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/js/mp3-player.js" asp-append-version="true"></script>
-    <script src="~/js/playlist-editor.js" asp-append-version="true"></script>
     <script>
+        var mp3Bridge = (function () {
+            var currentPlaylistId = null;
+
+            function loadPlaylistTracks(playlistId) {
+                if (!playlistId) {
+                    mp3Player.syncPlaylist([]);
+                    return;
+                }
+                fetch('/Playlists/PlaylistEditor?handler=TrackList&playlistId=' + playlistId)
+                    .then(function (res) { return res.text(); })
+                    .then(function (html) {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(html, 'text/html');
+                        var rows = doc.querySelectorAll('.pe-track-row');
+                        var tracks = [];
+                        rows.forEach(function (row) {
+                            tracks.push({ name: row.querySelector('.text-truncate')?.textContent || '', path: row.dataset.path, size: 0, channelCount: 2 });
+                        });
+                        mp3Player.syncPlaylist(tracks);
+                    });
+            }
+
+            return {
+                onPlaylistListLoaded: function (select) {
+                    var saved = resumeCookie.loadResume('mp3');
+                    if (saved && saved.playlistId) {
+                        var exists = Array.from(select.options).some(function (o) { return o.value == saved.playlistId; });
+                        if (exists) {
+                            select.value = saved.playlistId;
+                            currentPlaylistId = saved.playlistId;
+                            loadPlaylistTracks(saved.playlistId);
+                        }
+                    }
+                }
+            };
+        })();
+
         (function () {
             mp3Player.init([]);
 
             var select = document.getElementById('pm-playlist-select');
             var manageBtn = document.getElementById('pm-manage-btn');
 
-            playlistManager.init({
-                fileType: 'mp3',
-                onPlaylistLoaded: function (data) {
-                    if (data && data.tracks && data.tracks.length > 0) {
-                        mp3Player.syncPlaylist(data.tracks);
-                    } else {
-                        mp3Player.syncPlaylist([]);
-                    }
-                }
-            }).then(function () {
-                var resume = resumeCookie.loadResume('mp3');
-                if (resume && resume.playlistId && resume.track) {
-                    mp3Player.selectByPath(resume.track);
-                }
-            });
-
-            mp3Player.setOnTrackChanged(function (file) {
-                resumeCookie.saveResume('mp3', playlistManager.getCurrentPlaylistId(), file.path);
-            });
-
             manageBtn.addEventListener('click', function () {
-                playlistEditor.open({ fileType: 'mp3' });
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
             });
 
             select.addEventListener('change', function () {
-                if (!this.value) {
-                    mp3Player.syncPlaylist([]);
-                }
+                var id = this.value ? parseInt(this.value) : null;
+                resumeCookie.saveResume('mp3', id);
+                mp3Bridge.onPlaylistListLoaded(this);
+                if (!id) mp3Player.syncPlaylist([]);
+            });
+
+            mp3Player.setOnTrackChanged(function (file) {
+                resumeCookie.saveResume('mp3', select.value ? parseInt(select.value) : null, file.path);
             });
         })();
     </script>

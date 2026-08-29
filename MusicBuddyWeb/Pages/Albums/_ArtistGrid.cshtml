@@ -1,0 +1,74 @@
+@model ArtistGridModel
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div id="albums-stats" class="text-muted small">
+            <i class="bi bi-people me-1"></i>@Model.Artists.Count Artists
+             &middot; <i class="bi bi-disc me-1"></i>@Model.Artists.Sum(a => a.AlbumCount) Albums
+             &middot; <i class="bi bi-music-note me-1"></i>@Model.Artists.Sum(a => a.Albums.Sum(al => al.TrackCount)) Songs
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-secondary btn-sm" id="random-open-btn"
+                onclick="bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('random-offcanvas')).show();">
+            <i class="bi bi-shuffle me-1"></i>Random
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-post="/Albums?handler=Refresh"
+                hx-target="#albums-container"
+                hx-swap="innerHTML"
+                hx-indicator="this">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<div class="row">
+@foreach (var artist in Model.Artists)
+{
+    var artPath = GetArtistArtPath(artist, Model.ArtistArtMap);
+
+    <div class="col-6 col-md-4 col-lg-3 mb-3">
+        <a href="/Albums?artist=@Uri.EscapeDataString(artist.Name)"
+           hx-get="/Albums?handler=AlbumGrid&artist=@Uri.EscapeDataString(artist.Name)"
+           hx-target="#albums-container"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="card h-100 album-card text-decoration-none" style="cursor:pointer;">
+            <div class="album-art-wrap">
+                @if (artPath is not null)
+                {
+                    <img class="album-art"
+                         src="/api/albumart?path=@Uri.EscapeDataString(artPath)"
+                         loading="lazy"
+                         alt="@artist.Name"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='';">
+                }
+                <div class="album-art-placeholder" @(artPath is not null ? Html.Raw("style=\"display:none\"") : "")>
+                    <i class="bi bi-disc" style="font-size: 2.5rem;"></i>
+                    @if (artPath is null)
+                    {
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">No image set</small>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <h6 class="card-title mb-1 text-truncate">@artist.Name</h6>
+                <small class="text-muted">@artist.AlbumCount album@(artist.AlbumCount != 1 ? "s" : "")</small>
+            </div>
+        </a>
+    </div>
+}
+</div>
+
+@functions {
+    string? GetArtistArtPath(ArtistDto artist, Dictionary<string, string> artMap)
+    {
+        if (artMap.TryGetValue(artist.Name, out var chosen))
+        {
+            var match = artist.Albums.FirstOrDefault(a => a.Path == chosen);
+            if (match is not null) return match.FirstTrackPath;
+        }
+        return artist.Albums.FirstOrDefault()?.FirstTrackPath;
+    }
+}

@@ -13,7 +13,7 @@ var mp3Player = (function () {
     var splitter = null;
     var sources = [];
     var onTrackEnded = null;
-    var onTrackChanged = null;
+    var onTrackChangedCallbacks = [];
 
     function formatTime(sec) {
         if (isNaN(sec)) return '0:00';
@@ -28,17 +28,10 @@ var mp3Player = (function () {
         return d.innerHTML;
     }
 
-    function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
-    }
-
     function normalizeTrack(track) {
         return {
             name: track.name || track.fileName || '',
             path: track.path || track.filePath || '',
-            size: track.size || track.fileSize || 0,
             channelCount: track.channelCount || 2
         };
     }
@@ -51,10 +44,7 @@ var mp3Player = (function () {
         playlist.forEach(function (f, i) {
             var item = document.createElement('button');
             item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
-            item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
-                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
-                '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
-                '</div>';
+            item.innerHTML = '<span class="text-truncate">' + escapeHtml(f.name) + '</span>';
             item.addEventListener('click', function () { loadTrack(i); });
             el.appendChild(item);
         });
@@ -153,7 +143,6 @@ var mp3Player = (function () {
         var ts = {
             path: track.path,
             name: track.name,
-            size: track.size,
             channelCount: track.channelCount || 2,
             audio: new Audio(),
             mediaSource: null,
@@ -436,7 +425,9 @@ var mp3Player = (function () {
         showPlayState();
         preloadTrack(index + 1 < playlist.length ? index + 1 : 0);
         updateUIForTrack(ts);
-        if (onTrackChanged) onTrackChanged(playlist[index]);
+        if (onTrackChangedCallbacks.length) {
+            for (var c = 0; c < onTrackChangedCallbacks.length; c++) onTrackChangedCallbacks[c](playlist[index], index);
+        }
     }
 
     function seekToPosition(ts, newPos, resume) {
@@ -597,7 +588,7 @@ var mp3Player = (function () {
         },
 
         setOnTrackChanged: function (fn) {
-            onTrackChanged = fn;
+            if (onTrackChangedCallbacks.indexOf(fn) === -1) onTrackChangedCallbacks.push(fn);
         },
 
         getTransportState: function () {

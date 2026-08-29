@@ -91,7 +91,11 @@
                     <span class="badge bg-secondary" id="websid-count">0</span>
                 </div>
                 <div class="d-flex gap-2">
-                    <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;">
+                    <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;"
+                            hx-get="/Playlists/PlaylistEditor?handler=PlaylistList&type=sid"
+                            hx-trigger="load, revealed"
+                            hx-swap="innerHTML"
+                            hx-on::after-request="websidBridge.onPlaylistListLoaded(this)">
                         <option value="">-- All files --</option>
                     </select>
                     <button type="button" class="btn btn-sm btn-outline-primary" id="pm-manage-btn" title="Open playlist manager">
@@ -119,47 +123,62 @@
     <script src="~/js/vu-meter.js" asp-append-version="true"></script>
     <script>vuMeter.init('vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');</script>
     <script src="~/js/resume-cookie.js" asp-append-version="true"></script>
-    <script src="~/js/playlist-manager.js" asp-append-version="true"></script>
     <script src="~/lib/websid/scriptprocessor_player.min.js"></script>
     <script>window.WASM_SEARCH_PATH = '/lib/websid/';</script>
     <script src="~/lib/websid/backend_websid.js"></script>
     <script src="~/js/websid-player.js" asp-append-version="true"></script>
-    <script src="~/js/playlist-editor.js" asp-append-version="true"></script>
     <script>
+        var websidBridge = (function () {
+            function loadPlaylistTracks(playlistId) {
+                if (!playlistId) { websidPlayer.syncPlaylist([]); return; }
+                fetch('/Playlists/PlaylistEditor?handler=TrackList&playlistId=' + playlistId)
+                    .then(function (res) { return res.text(); })
+                    .then(function (html) {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(html, 'text/html');
+                        var rows = doc.querySelectorAll('.pe-track-row');
+                        var tracks = [];
+                        rows.forEach(function (row) {
+                            tracks.push({ name: row.querySelector('.text-truncate')?.textContent || '', path: row.dataset.path, size: 0, channelCount: 2 });
+                        });
+                        websidPlayer.syncPlaylist(tracks);
+                    });
+            }
+
+            return {
+                loadPlaylistTracks: loadPlaylistTracks,
+                onPlaylistListLoaded: function (select) {
+                    var saved = resumeCookie.loadResume('sid');
+                    if (saved && saved.playlistId) {
+                        var exists = Array.from(select.options).some(function (o) { return o.value == saved.playlistId; });
+                        if (exists) {
+                            select.value = saved.playlistId;
+                            loadPlaylistTracks(saved.playlistId);
+                        }
+                    }
+                }
+            };
+        })();
+
         (function () {
             websidPlayer.init([]);
 
             var select = document.getElementById('pm-playlist-select');
             var manageBtn = document.getElementById('pm-manage-btn');
 
-            playlistManager.init({
-                fileType: 'sid',
-                onPlaylistLoaded: function (data) {
-                    if (data && data.tracks && data.tracks.length > 0) {
-                        websidPlayer.syncPlaylist(data.tracks);
-                    } else {
-                        websidPlayer.syncPlaylist([]);
-                    }
-                }
-            }).then(function () {
-                var resume = resumeCookie.loadResume('sid');
-                if (resume && resume.playlistId && resume.track) {
-                    websidPlayer.selectByPath(resume.track);
-                }
+            select.addEventListener('change', function () {
+                var id = this.value ? parseInt(this.value) : null;
+                resumeCookie.saveResume('sid', id);
+                if (id) websidBridge.loadPlaylistTracks(id);
+                else websidPlayer.syncPlaylist([]);
             });
 
             websidPlayer.setOnTrackChanged(function (file) {
-                resumeCookie.saveResume('sid', playlistManager.getCurrentPlaylistId(), file.path);
+                resumeCookie.saveResume('sid', select.value ? parseInt(select.value) : null, file.path);
             });
 
             manageBtn.addEventListener('click', function () {
-                playlistEditor.open({ fileType: 'sid' });
-            });
-
-            select.addEventListener('change', function () {
-                if (!this.value) {
-                    websidPlayer.syncPlaylist([]);
-                }
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
             });
         })();
     </script>

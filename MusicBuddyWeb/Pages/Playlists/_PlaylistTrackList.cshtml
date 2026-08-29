@@ -1,0 +1,45 @@
+@model PlaylistTrackListModel
+
+<div class="d-flex justify-content-between align-items-center mb-2 px-2">
+    <span class="small fw-semibold"><i class="bi bi-list-ul me-1"></i>Playlist</span>
+    <span class="badge bg-secondary">@Model.Tracks.Count track@(Model.Tracks.Count != 1 ? "s" : "")</span>
+</div>
+
+@if (Model.Tracks.Count == 0)
+{
+    <div class="text-center text-muted py-4 small">
+        <i class="bi bi-arrow-right-circle me-2"></i>
+        Drag tracks or albums from the Library into this list
+    </div>
+}
+else
+{
+    @for (var i = 0; i < Model.Tracks.Count; i++)
+    {
+        var t = Model.Tracks[i];
+        <div class="list-group-item pe-track-row d-flex align-items-center"
+             draggable="true"
+             data-track-id="@t.Id"
+             data-path="@t.FilePath"
+             data-file-name="@t.FileName"
+             data-sort-order="@t.SortOrder">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="text-muted me-2 pe-track-num">@(i + 1).</span>
+            <button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"
+                    data-path="@t.FilePath"><i class="bi bi-play-circle"></i></button>
+            <span class="text-truncate flex-grow-1">@t.FileName</span>
+            <small class="text-nowrap text-muted ms-2">@FormatSize(t.FileSize)</small>
+            <button type="button" class="btn btn-sm btn-outline-danger ms-2 pe-remove-btn" title="Remove"
+                    data-track-id="@t.Id"><i class="bi bi-x-lg"></i></button>
+        </div>
+    }
+}
+
+@functions {
+    string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / 1048576.0:F1} MB";
+    }
+}

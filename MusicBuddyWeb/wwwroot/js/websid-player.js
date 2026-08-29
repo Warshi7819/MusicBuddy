@@ -8,7 +8,7 @@ var websidPlayer = (function () {
     var preferredModel = null;
     var updateInterval = null;
     var onTrackEnded = null;
-    var onTrackChanged = null;
+    var onTrackChangedCallbacks = [];
 
     function formatTime(sec) {
         var m = Math.floor(sec / 60);
@@ -24,10 +24,7 @@ var websidPlayer = (function () {
         playlist.forEach(function (f, i) {
             var item = document.createElement('button');
             item.className = 'list-group-item list-group-item-action' + (i === currentIndex ? ' active' : '');
-            item.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
-                '<span class="text-truncate me-2">' + escapeHtml(f.name) + '</span>' +
-                '<small class="text-nowrap text-muted">' + formatSize(f.size) + '</small>' +
-                '</div>';
+            item.innerHTML = '<span class="text-truncate">' + escapeHtml(f.name) + '</span>';
             item.addEventListener('click', function () { loadTrack(i); });
             el.appendChild(item);
         });
@@ -37,12 +34,6 @@ var websidPlayer = (function () {
         var d = document.createElement('div');
         d.appendChild(document.createTextNode(s));
         return d.innerHTML;
-    }
-
-    function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
     function updateSubtuneUI(info) {
@@ -90,7 +81,7 @@ var websidPlayer = (function () {
         return {
             name: track.name || track.fileName || '',
             path: track.path || track.filePath || '',
-            size: track.size || track.fileSize || 0
+            channelCount: track.channelCount || 2
         };
     }
 
@@ -116,11 +107,13 @@ var websidPlayer = (function () {
         if (index < 0 || index >= playlist.length) return;
         currentIndex = index;
         renderPlaylist();
-        playFile(playlist[index]);
+        playFile(playlist[index], index);
     }
 
-    function playFile(file) {
-        if (onTrackChanged) onTrackChanged(file);
+    function playFile(file, index) {
+        if (onTrackChangedCallbacks.length) {
+            for (var c = 0; c < onTrackChangedCallbacks.length; c++) onTrackChangedCallbacks[c](file, index);
+        }
         document.getElementById('websid-title').textContent = file.name;
         document.getElementById('websid-author').textContent = '';
         document.getElementById('websid-info').textContent = 'Loading...';
@@ -176,7 +169,27 @@ var websidPlayer = (function () {
             });
 
             document.getElementById('websid-stop').addEventListener('click', function () {
-                if (player) { player.pause(); showPauseState(); }
+                if (!player || currentIndex < 0) return;
+                var info = player.getSongInfo();
+                var track = (info && typeof info.actualSubsong === 'number') ? info.actualSubsong : -1;
+                var vol = player.getVolume();
+                player.pause();
+                player.setVolume(0);
+                function stopAtStart() {
+                    if (!player) return;
+                    player.pause();
+                    player.setVolume(typeof vol === 'number' ? vol : 0.8);
+                }
+                ScriptNodePlayer.loadMusicFromURL(playlist[currentIndex].path,
+                    { track: track, timeout: -1, traceSID: false },
+                    stopAtStart,
+                    stopAtStart
+                ).then(function () {
+                    stopAtStart();
+                    showPauseState();
+                    document.getElementById('websid-time').textContent = '0:00';
+                    document.getElementById('websid-seek-fill').style.width = '0%';
+                });
             });
 
             document.getElementById('websid-prev').addEventListener('click', function () {
@@ -306,7 +319,7 @@ var websidPlayer = (function () {
             for (var i = 0; i < playlist.length; i++) {
                 if (playlist[i].path === path) { loadTrack(i); return; }
             }
-            playFile({ name: path.split('/').pop(), path: path, size: 0 });
+            playFile({ name: path.split('/').pop(), path: path });
         },
 
         selectByPath: function (path) {
@@ -330,7 +343,7 @@ var websidPlayer = (function () {
         },
 
         setOnTrackChanged: function (fn) {
-            onTrackChanged = fn;
+            if (onTrackChangedCallbacks.indexOf(fn) === -1) onTrackChangedCallbacks.push(fn);
         },
 
         getTransportState: function () {
@@ -352,6 +365,19 @@ var websidPlayer = (function () {
             }
             if (playing) { player.pause(); showPauseState(); }
             else { player.resume(); showPlayState(); }
+        },
+
+        play: function () {
+            if (!player) {
+                if (playlist.length > 0) loadTrack(currentIndex >= 0 ? currentIndex : 0);
+                return;
+            }
+            if (!playing) { player.resume(); showPlayState(); }
+        },
+
+        pause: function () {
+            if (!player) return;
+            if (playing) { player.pause(); showPauseState(); }
         },
 
         prev: function () {

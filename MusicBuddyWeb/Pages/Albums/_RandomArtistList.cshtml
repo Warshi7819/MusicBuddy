@@ -1,0 +1,15 @@
+@model List<string>
+
+@foreach (var artist in Model)
+{
+    <a href="#"
+       class="list-group-item list-group-item-action"
+       data-label="@artist.ToLower()"
+       hx-get="/Albums?handler=RandomTrackView&artist=@Uri.EscapeDataString(artist)"
+       hx-target="#albums-container"
+       hx-swap="innerHTML"
+       hx-push-url="true"
+       onclick="bootstrap.Offcanvas.getInstance(document.getElementById('random-offcanvas')).hide();">
+        @artist
+    </a>
+}
