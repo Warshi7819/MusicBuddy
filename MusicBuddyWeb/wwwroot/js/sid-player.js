@@ -193,6 +193,8 @@ var sidPlayer = (function () {
                     try { player.aCtx.close(); } catch (e) {}
                 }
                 player = createPlayer();
+                var volEl = document.getElementById('sid-volume');
+                if (volEl) player.setvolume(volEl.value / 100);
                 tuneLoaded = false;
                 subtune = 0;
                 showPauseState();
