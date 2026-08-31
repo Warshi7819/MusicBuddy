@@ -58,6 +58,7 @@ public class RandomController : ControllerBase
         try
         {
             var genres = await _random.GetGenresAsync();
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(genres);
         }
         catch (Exception ex)

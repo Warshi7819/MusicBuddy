@@ -133,9 +133,9 @@ app.Map("/api/{**path}", async (HttpContext context, string path, IHttpClientFac
         if (response.Headers.ETag != null)
             context.Response.Headers.ETag = response.Headers.ETag.ToString();
 
-        if (context.Request.Path.Value?.StartsWith("/api/albumart") == true &&
-            ((int)response.StatusCode == 200 || (int)response.StatusCode == 304))
-            context.Response.Headers["Cache-Control"] = "public, max-age=604800";
+        if (response.Headers.TryGetValues("Cache-Control", out var cc) ||
+            response.Content.Headers.TryGetValues("Cache-Control", out cc))
+            context.Response.Headers["Cache-Control"] = string.Join(", ", cc);
 
         if ((int)response.StatusCode != 204 && (int)response.StatusCode != 304)
             await response.Content.CopyToAsync(context.Response.Body);

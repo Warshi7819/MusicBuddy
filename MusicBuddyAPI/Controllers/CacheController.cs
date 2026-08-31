@@ -17,15 +17,12 @@ public class CacheController : ControllerBase
     public IActionResult Refresh([FromQuery] string type = "sid")
     {
         _cache.RefreshCache(type);
-        return Ok(new { message = $"Cache refreshed for {type}", duration = _cache.GetCurrentDuration().TotalMinutes });
+        return Ok(new { message = $"Cache refreshed for {type}" });
     }
 
     [HttpGet("status")]
     public IActionResult Status()
     {
-        return Ok(new
-        {
-            defaultDurationMinutes = _cache.GetCurrentDuration().TotalMinutes
-        });
+        return Ok(new { message = "Cache service active" });
     }
 }

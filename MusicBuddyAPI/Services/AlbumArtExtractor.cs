@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using System.IO.Enumeration;
 
@@ -14,20 +15,27 @@ public class AlbumArtExtractor
 
     private readonly FileCacheService _fileCache;
     private readonly IMemoryCache _memoryCache;
-    private readonly TagLibThrottle _throttle;
     private readonly ILogger<AlbumArtExtractor> _logger;
-    private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(12);
+    private readonly ConcurrentDictionary<string, byte> _trackedKeys = new();
 
     public AlbumArtExtractor(
         FileCacheService fileCache,
         IMemoryCache memoryCache,
-        TagLibThrottle throttle,
         ILogger<AlbumArtExtractor> logger)
     {
         _fileCache = fileCache;
         _memoryCache = memoryCache;
-        _throttle = throttle;
         _logger = logger;
+    }
+
+    public void ClearAll()
+    {
+        foreach (var key in _trackedKeys.Keys.ToList())
+        {
+            _memoryCache.Remove(key);
+            _trackedKeys.TryRemove(key, out _);
+        }
+        _logger.LogInformation("Album art cache cleared ({Count} entries)", _trackedKeys.Count);
     }
 
     private sealed class ArtEntry
@@ -53,11 +61,10 @@ public class AlbumArtExtractor
             return null;
         }
 
-        await _throttle.Art.WaitAsync(ct);
+        ct.ThrowIfCancellationRequested();
+
         try
         {
-            ct.ThrowIfCancellationRequested();
-
             using var tagFile = TagLib.File.Create(fullPath);
             if (tagFile.Tag.Pictures.Length == 0)
             {
@@ -68,7 +75,8 @@ public class AlbumArtExtractor
                     return null;
                 }
 
-                _memoryCache.Set(cacheKey, new ArtEntry { Bytes = folderBytes, MimeType = "image/jpeg", Etag = ComputeEtag(folderBytes) }, _cacheDuration);
+                _trackedKeys.TryAdd(cacheKey, 0);
+                _memoryCache.Set(cacheKey, new ArtEntry { Bytes = folderBytes, MimeType = "image/jpeg", Etag = ComputeEtag(folderBytes) });
                 _logger.LogDebug("Album art (folder fallback) for {Path} ({Size} bytes)", path, folderBytes.Length);
                 return (folderBytes, "image/jpeg", ComputeEtag(folderBytes));
             }
@@ -77,7 +85,8 @@ public class AlbumArtExtractor
             var bytes = picture.Data.Data;
             var mimeType = picture.MimeType ?? "image/jpeg";
 
-            _memoryCache.Set(cacheKey, new ArtEntry { Bytes = bytes, MimeType = mimeType, Etag = ComputeEtag(bytes) }, _cacheDuration);
+            _trackedKeys.TryAdd(cacheKey, 0);
+            _memoryCache.Set(cacheKey, new ArtEntry { Bytes = bytes, MimeType = mimeType, Etag = ComputeEtag(bytes) });
             _logger.LogDebug("Album art extracted for {Path} ({Size} bytes)", path, bytes.Length);
             return (bytes, mimeType, ComputeEtag(bytes));
         }
@@ -90,15 +99,12 @@ public class AlbumArtExtractor
             CacheNothing(cacheKey);
             return null;
         }
-        finally
-        {
-            _throttle.Art.Release();
-        }
     }
 
     private void CacheNothing(string cacheKey)
     {
-        _memoryCache.Set(cacheKey, new ArtEntry { Bytes = Array.Empty<byte>() }, _cacheDuration);
+        _trackedKeys.TryAdd(cacheKey, 0);
+        _memoryCache.Set(cacheKey, new ArtEntry { Bytes = Array.Empty<byte>() });
     }
 
     private static string ComputeEtag(byte[] bytes)

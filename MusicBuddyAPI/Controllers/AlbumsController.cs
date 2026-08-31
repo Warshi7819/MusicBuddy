@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,22 +14,23 @@ public class AlbumsController : ControllerBase
     private readonly AlbumCatalogService _catalog;
     private readonly FileCacheService _cache;
     private readonly IMemoryCache _memoryCache;
-    private readonly TagLibThrottle _throttle;
+    private readonly AlbumArtExtractor _artExtractor;
     private readonly ArtistArtPrewarmer _artPrewarmer;
     private readonly ILogger<AlbumsController> _logger;
+    private static readonly ConcurrentDictionary<string, byte> _detailCacheKeys = new();
 
     public AlbumsController(
         AlbumCatalogService catalog,
         FileCacheService cache,
         IMemoryCache memoryCache,
-        TagLibThrottle throttle,
+        AlbumArtExtractor artExtractor,
         ArtistArtPrewarmer artPrewarmer,
         ILogger<AlbumsController> logger)
     {
         _catalog = catalog;
         _cache = cache;
         _memoryCache = memoryCache;
-        _throttle = throttle;
+        _artExtractor = artExtractor;
         _artPrewarmer = artPrewarmer;
         _logger = logger;
     }
@@ -39,6 +41,7 @@ public class AlbumsController : ControllerBase
         try
         {
             var payload = await _catalog.GetPayloadAsync();
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(payload);
         }
         catch (Exception ex)
@@ -53,6 +56,14 @@ public class AlbumsController : ControllerBase
     {
         try
         {
+            foreach (var key in _detailCacheKeys.Keys.ToList())
+            {
+                _memoryCache.Remove(key);
+                _detailCacheKeys.TryRemove(key, out _);
+            }
+            _artExtractor.ClearAll();
+            _cache.ClearAll("mp3");
+
             await _catalog.RefreshAsync();
             await _artPrewarmer.PrewarmAsync(HttpContext.RequestAborted);
             return NoContent();
@@ -70,7 +81,10 @@ public class AlbumsController : ControllerBase
         path = (path ?? "").TrimStart('/');
         var cacheKey = $"albums:detail:{path}";
         if (_memoryCache.TryGetValue(cacheKey, out object? cached) && cached is not null)
+        {
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(cached);
+        }
 
         try
         {
@@ -81,53 +95,46 @@ public class AlbumsController : ControllerBase
             string? genre = null;
 
             var ct = HttpContext.RequestAborted;
-            await _throttle.Detail.WaitAsync(ct);
-            try
+
+            foreach (var file in listing.Files)
             {
-                foreach (var file in listing.Files)
+                ct.ThrowIfCancellationRequested();
+
+                var fullPath = _cache.ResolveFilePath(file.Path);
+                if (fullPath is null) continue;
+
+                TrackDto? track = null;
+                try
                 {
-                    ct.ThrowIfCancellationRequested();
-
-                    var fullPath = _cache.ResolveFilePath(file.Path);
-                    if (fullPath is null) continue;
-
-                    TrackDto? track = null;
-                    try
+                    using var tagFile = TagLib.File.Create(fullPath);
+                    var tagTitle = tagFile.Tag.Title;
+                    var tagPerformer = tagFile.Tag.Performers?.FirstOrDefault();
+                    track = new TrackDto
                     {
-                        using var tagFile = TagLib.File.Create(fullPath);
-                        var tagTitle = tagFile.Tag.Title;
-                        var tagPerformer = tagFile.Tag.Performers?.FirstOrDefault();
-                        track = new TrackDto
-                        {
-                            Name = file.Name,
-                            Path = file.Path,
-                            DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds,
-                            Title = string.IsNullOrWhiteSpace(tagTitle) ? null : tagTitle,
-                            Artist = string.IsNullOrWhiteSpace(tagPerformer) ? null : tagPerformer
-                        };
+                        Name = file.Name,
+                        Path = file.Path,
+                        DurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds,
+                        Title = string.IsNullOrWhiteSpace(tagTitle) ? null : tagTitle,
+                        Artist = string.IsNullOrWhiteSpace(tagPerformer) ? null : tagPerformer
+                    };
 
-                        if (albumArtist is null || year is null || genre is null)
-                        {
-                            var aa = tagFile.Tag.AlbumArtists?.FirstOrDefault()
-                                     ?? tagFile.Tag.Performers?.FirstOrDefault();
-                            var g = tagFile.Tag.Genres?.FirstOrDefault();
-                            var y = tagFile.Tag.Year > 0 ? tagFile.Tag.Year : (uint?)null;
-                            albumArtist ??= string.IsNullOrWhiteSpace(aa) ? null : aa;
-                            year ??= y;
-                            genre ??= string.IsNullOrWhiteSpace(g) ? null : g;
-                        }
-                    }
-                    catch
+                    if (albumArtist is null || year is null || genre is null)
                     {
-                        track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0, Title = file.Name, Artist = null };
+                        var aa = tagFile.Tag.AlbumArtists?.FirstOrDefault()
+                                 ?? tagFile.Tag.Performers?.FirstOrDefault();
+                        var g = tagFile.Tag.Genres?.FirstOrDefault();
+                        var y = tagFile.Tag.Year > 0 ? tagFile.Tag.Year : (uint?)null;
+                        albumArtist ??= string.IsNullOrWhiteSpace(aa) ? null : aa;
+                        year ??= y;
+                        genre ??= string.IsNullOrWhiteSpace(g) ? null : g;
                     }
-
-                    tracks.Add(track);
                 }
-            }
-            finally
-            {
-                _throttle.Detail.Release();
+                catch
+                {
+                    track = new TrackDto { Name = file.Name, Path = file.Path, DurationSeconds = 0, Title = file.Name, Artist = null };
+                }
+
+                tracks.Add(track);
             }
 
             var result = new AlbumDetailDto
@@ -140,7 +147,9 @@ public class AlbumsController : ControllerBase
                 Tracks = tracks
             };
 
-            _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
+            _detailCacheKeys.TryAdd(cacheKey, 0);
+            _memoryCache.Set(cacheKey, result);
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(result);
         }
         catch (OperationCanceledException)

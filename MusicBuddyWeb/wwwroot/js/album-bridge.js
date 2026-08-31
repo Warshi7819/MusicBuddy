@@ -52,7 +52,7 @@ window.albumBridge = (function () {
 
     document.body.addEventListener('htmx:afterSwap', function (e) {
         if (e.detail.target.id === 'albums-container') {
-            setTimeout(initPlayerFromTrackView, 50);
+            requestAnimationFrame(initPlayerFromTrackView);
         }
     });
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace MusicBuddyAPI.Services;
@@ -23,11 +24,11 @@ public class FileCacheService
 {
     private readonly IMemoryCache _cache;
     private readonly ILogger<FileCacheService> _logger;
-    private readonly TimeSpan _defaultDuration;
     private readonly string _mp3Root;
     private readonly string _sidRoot;
     private readonly string _mp3UrlPrefix;
     private readonly string _sidUrlPrefix;
+    private readonly ConcurrentDictionary<string, byte> _trackedKeys = new();
 
     public FileCacheService(
         IMemoryCache cache,
@@ -37,16 +38,13 @@ public class FileCacheService
         _cache = cache;
         _logger = logger;
 
-        var durationMinutes = config.GetValue<int>("FileCache:DefaultDurationMinutes", 10);
-        _defaultDuration = TimeSpan.FromMinutes(durationMinutes);
-
         _mp3Root = ResolvePath(config["Music:Mp3Root"] ?? string.Empty);
         _sidRoot = ResolvePath(config["Music:SidRoot"] ?? string.Empty);
         _mp3UrlPrefix = config["Music:Mp3UrlPrefix"] ?? "/Music/Mp3";
         _sidUrlPrefix = config["Music:SidUrlPrefix"] ?? "/Music/Sid";
 
-        _logger.LogInformation("FileCache initialized: MP3 root={Mp3Root}, SID root={SidRoot}, cache duration={Duration}min",
-            _mp3Root, _sidRoot, _defaultDuration.TotalMinutes);
+        _logger.LogInformation("FileCache initialized: MP3 root={Mp3Root}, SID root={SidRoot}",
+            _mp3Root, _sidRoot);
     }
 
     public string GetRootPath(string fileType)
@@ -103,21 +101,17 @@ public class FileCacheService
 
         _logger.LogDebug("Cache miss for {FullPath}, scanning directory", fullPath);
         var listing = await ScanDirectoryAsync(fullPath, normalizedRelative, fileType);
-        _cache.Set(cacheKey, listing, _defaultDuration);
+        _trackedKeys.TryAdd(cacheKey, 0);
+        _cache.Set(cacheKey, listing);
 
-        _logger.LogInformation("Cached directory listing for {Path}: {DirCount} dirs, {FileCount} files (expires in {Duration})",
-            relativePath, listing.Directories.Count, listing.Files.Count, _defaultDuration);
+        _logger.LogInformation("Cached directory listing for {Path}: {DirCount} dirs, {FileCount} files",
+            relativePath, listing.Directories.Count, listing.Files.Count);
         return listing;
     }
 
     public void RefreshCache(string fileType)
     {
-        var rootPath = GetRootPath(fileType);
-        if (string.IsNullOrEmpty(rootPath)) return;
-
-        var cacheKey = CacheKey(rootPath, fileType);
-        _cache.Remove(cacheKey);
-        _logger.LogInformation("Evicted root cache for {FileType}", fileType);
+        ClearAll(fileType);
     }
 
     public async Task<List<FileEntry>> CollectFilesAsync(string relativePath, string fileType)
@@ -144,7 +138,8 @@ public class FileCacheService
 
         var files = await CollectFromDirectoryAsync(fullPath, fileType, normalizedRelative);
         files = files.OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase).ToList();
-        _cache.Set(cacheKey, files, _defaultDuration);
+        _trackedKeys.TryAdd(cacheKey, 0);
+        _cache.Set(cacheKey, files);
 
         _logger.LogInformation("Collected {Count} files under {Path} (type={FileType})",
             files.Count, relativePath, fileType);
@@ -182,10 +177,20 @@ public class FileCacheService
     {
         var cacheKey = CacheKey(fullPath, fileType);
         _cache.Remove(cacheKey);
+        _trackedKeys.TryRemove(cacheKey, out _);
         _logger.LogInformation("Evicted cache for {Path}", fullPath);
     }
 
-    public TimeSpan GetCurrentDuration() => _defaultDuration;
+    public void ClearAll(string fileType)
+    {
+        var prefix = $"files:{fileType}:";
+        foreach (var key in _trackedKeys.Keys.Where(k => k.StartsWith(prefix)).ToList())
+        {
+            _cache.Remove(key);
+            _trackedKeys.TryRemove(key, out _);
+        }
+        _logger.LogInformation("Cleared all cache entries for {FileType}", fileType);
+    }
 
     public string? ResolveFilePath(string urlPath)
     {

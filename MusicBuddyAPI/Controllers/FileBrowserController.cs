@@ -30,6 +30,7 @@ public class FileBrowserController : ControllerBase
             var listing = await _cache.BrowseAsync(path, type);
             _logger.LogInformation("File browse OK: type={FileType}, path={Path}, dirs={DirCount}, files={FileCount}",
                 type, path, listing.Directories.Count, listing.Files.Count);
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(listing);
         }
         catch (InvalidOperationException ex)
@@ -56,6 +57,7 @@ public class FileBrowserController : ControllerBase
             var files = await _cache.CollectFilesAsync(path, type);
             _logger.LogInformation("File collect OK: type={FileType}, path={Path}, files={FileCount}",
                 type, path, files.Count);
+            Response.Headers["Cache-Control"] = "private, max-age=600";
             return Ok(files);
         }
         catch (InvalidOperationException ex)
