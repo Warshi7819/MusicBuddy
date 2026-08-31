@@ -315,7 +315,8 @@
         }
 
         function refreshPlaylistSelect(selectId) {
-            htmx.ajax('GET', '/Playlists/PlaylistEditor?handler=PlaylistList&type=' + encodeURIComponent(fileType), {
+            var listUrl = '/Playlists/PlaylistEditor?handler=PlaylistList&type=' + encodeURIComponent(fileType);
+            htmx.ajax('GET', listUrl, {
                 target: '#pe-playlist-select',
                 swap: 'innerHTML'
             }).then(function () {
@@ -330,6 +331,16 @@
                 }
                 updateButtons();
             });
+            var parentSelect = document.getElementById('pm-playlist-select');
+            if (parentSelect) {
+                var currentVal = parentSelect.value;
+                fetch(listUrl)
+                    .then(function (r) { return r.text(); })
+                    .then(function (html) {
+                        parentSelect.innerHTML = html;
+                        parentSelect.value = currentVal;
+                    });
+            }
         }
 
         function deletePlaylist() {
