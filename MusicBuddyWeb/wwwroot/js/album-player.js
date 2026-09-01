@@ -5,6 +5,12 @@ if (window.albumPlayer && typeof window.albumPlayer.dispose === 'function') {
 }
 
 var albumPlayer = (function () {
+    function encodeFilePath(path) {
+        return path.split('/').map(function (segment) {
+            return encodeURIComponent(segment);
+        }).join('/');
+    }
+
     var tracks = [];
     var currentIndex = -1;
     var playing = false;
@@ -110,7 +116,7 @@ var albumPlayer = (function () {
     function startWebAudioDecode(ts) {
         if (ts.loadedWebAudio || ts.state === 'none') return;
         var ctx = ensureAudioContext();
-        fetch(ts.path)
+        fetch(encodeFilePath(ts.path))
             .then(function (r) { return r.arrayBuffer(); })
             .then(function (data) {
                 return ctx.decodeAudioData(data);
@@ -231,7 +237,7 @@ var albumPlayer = (function () {
     function loadTrackSource(ts) {
         if (ts.state !== 'none') return;
         ts.state = 'loading';
-        ts.audio.src = ts.path;
+        ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
         startWebAudioDecode(ts);
     }
@@ -241,7 +247,7 @@ var albumPlayer = (function () {
         var ts = sources[index];
         if (ts.state !== 'none') return;
         ts.state = 'loading';
-        ts.audio.src = ts.path;
+        ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
         startWebAudioDecode(ts);
     }

@@ -1,4 +1,10 @@
 var mp3Player = (function () {
+    function encodeFilePath(path) {
+        return path.split('/').map(function (segment) {
+            return encodeURIComponent(segment);
+        }).join('/');
+    }
+
     var playlist = [];
     var currentIndex = -1;
     var playing = false;
@@ -194,7 +200,7 @@ var mp3Player = (function () {
     function startWebAudioDecode(ts) {
         if (ts.loadedWebAudio || ts.state === 'none') return;
         var ctx = ensureAudioContext();
-        fetch(ts.path)
+        fetch(encodeFilePath(ts.path))
             .then(function (r) { return r.arrayBuffer(); })
             .then(function (data) {
                 return ctx.decodeAudioData(data);
@@ -317,7 +323,7 @@ var mp3Player = (function () {
     function loadTrackSource(ts) {
         if (ts.state !== 'none') return;
         ts.state = 'loading';
-        ts.audio.src = ts.path;
+        ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
         startWebAudioDecode(ts);
     }
@@ -327,7 +333,7 @@ var mp3Player = (function () {
         if (!ts) return;
         if (ts.state !== 'none') return;
         ts.state = 'loading';
-        ts.audio.src = ts.path;
+        ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
         startWebAudioDecode(ts);
     }
