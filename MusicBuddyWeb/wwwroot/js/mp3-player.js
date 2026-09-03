@@ -521,12 +521,18 @@ var mp3Player = (function () {
         playlist = normalized;
         if (kept) {
             currentIndex = keptIndex;
+        } else if (playlist.length > 0) {
+            currentIndex = 0;
+            showPauseState();
         } else {
             currentIndex = -1;
             showPauseState();
             resetNowPlayingUI();
         }
         renderPlaylist();
+        if (!kept && currentIndex >= 0) {
+            updateUIForTrack(getTrackSource(currentIndex));
+        }
     }
 
     return {
@@ -592,6 +598,13 @@ var mp3Player = (function () {
                     updateUIForTrack(getTrackSource(i));
                     return;
                 }
+            }
+        },
+
+        selectTrack: function (index) {
+            if (index >= 0 && index < playlist.length) {
+                currentIndex = index;
+                updateUIForTrack(getTrackSource(index));
             }
         },
 
