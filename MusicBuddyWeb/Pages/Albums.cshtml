@@ -94,19 +94,56 @@
         }
     }
 
+    function restoreArtistGridScroll() {
+        var saved = sessionStorage.getItem('albums_artist_scroll');
+        if (saved !== null) {
+            var top = parseInt(saved, 10);
+            requestAnimationFrame(function () {
+                window.scrollTo(0, top);
+            });
+        }
+    }
+
     if (!window.__albumsNavStopBound) {
         window.__albumsNavStopBound = true;
 
         document.body.addEventListener('htmx:beforeSwap', function(e) {
             if (e.detail.target.id === 'albums-container') {
                 stopAlbumPlayer();
+
+                if (document.getElementById('albums-stats')) {
+                    sessionStorage.setItem('albums_artist_scroll', window.scrollY || document.documentElement.scrollTop || 0);
+                }
+            }
+        });
+
+        document.body.addEventListener('htmx:afterSettle', function(e) {
+            if (e.detail.target.id === 'albums-container') {
+                if (document.getElementById('albums-stats')) {
+                    restoreArtistGridScroll();
+                } else {
+                    window.scrollTo(0, 0);
+                }
             }
         });
 
         window.addEventListener('beforeunload', stopAlbumPlayer);
         window.addEventListener('pagehide', stopAlbumPlayer);
         window.addEventListener('popstate', stopAlbumPlayer);
-        document.addEventListener('htmx:historyRestore', stopAlbumPlayer);
+
+        document.addEventListener('htmx:historyRestore', function() {
+            stopAlbumPlayer();
+            if (document.getElementById('albums-stats')) {
+                restoreArtistGridScroll();
+            }
+        });
+
+        var navLink = document.querySelector('a.nav-link[href="/Albums"]');
+        if (navLink) {
+            navLink.addEventListener('click', function () {
+                sessionStorage.removeItem('albums_artist_scroll');
+            });
+        }
     }
 </script>
 
