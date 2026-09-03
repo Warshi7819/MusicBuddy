@@ -403,7 +403,7 @@ var albumPlayer = (function () {
         if (text) text.textContent = label || 'Random';
         var indicator = document.getElementById('random-indicator');
         if (indicator) {
-            indicator.classList.toggle('d-none', false);
+            indicator.classList.toggle('d-none', !active);
         }
     }
 

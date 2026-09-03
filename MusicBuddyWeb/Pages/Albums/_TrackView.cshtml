@@ -82,10 +82,10 @@
                 <button class="btn btn-sm btn-outline-secondary" id="alb-prev" title="Previous track">
                     <i class="bi bi-skip-start-fill"></i>
                 </button>
-                <button class="btn btn-sm btn-primary" id="alb-play" title="Play">
+                <button class="btn btn-sm btn-primary" id="alb-play" title="Play" style="@(Model.RandomTrackIndex >= 0 ? "display:none;" : "")">
                     <i class="bi bi-play-fill"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" id="alb-pause" title="Pause" style="display:none;">
+                <button class="btn btn-sm btn-outline-secondary" id="alb-pause" title="Pause" style="@(Model.RandomTrackIndex >= 0 ? "" : "display:none;")">
                     <i class="bi bi-pause-fill"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-secondary" id="alb-next" title="Next track">
@@ -106,10 +106,10 @@
             <div class="d-flex align-items-center gap-2 mt-2">
                 <i class="bi bi-volume-up text-muted"></i>
                 <input type="range" class="form-range" id="alb-volume" min="0" max="100" value="80" style="width: 100px;">
-                <span id="random-indicator" class="@(Model.RandomParams is null ? "d-none" : "") small text-muted align-items-center gap-1 ms-auto">
+                <span id="random-indicator" class="@(Model.RandomTrackIndex < 0 ? "d-none" : "") small text-muted align-items-center gap-1 ms-auto">
                     <span id="random-indicator-dot" class="d-inline-block rounded-circle"
-                          style="width:8px;height:8px;background:@(Model.RandomParams is null ? "#6c757d" : "#2CFF05");"></span>
-                    <span id="random-indicator-text">@(Model.RandomParams is null ? "Random" : GetRandomLabel(Model.RandomParams))</span>
+                          style="width:8px;height:8px;background:@(Model.RandomTrackIndex < 0 ? "#6c757d" : "#2CFF05");"></span>
+                    <span id="random-indicator-text">@(Model.RandomTrackIndex < 0 ? "Random" : GetRandomLabel(Model.RandomParams))</span>
                 </span>
             </div>
         </div>
@@ -136,24 +136,8 @@
     </div>
 </div>
 
-<script>
-    (function() {
-        var trackListEl = document.getElementById('track-list');
-        if (!trackListEl) return;
-        var tracks = JSON.parse(trackListEl.dataset.tracks || '[]');
-        var randomIndex = parseInt(trackListEl.dataset.randomIndex || '-1');
-        var randomParams = trackListEl.dataset.randomParams || '';
-
-        if (tracks.length > 0) {
-            window.dispatchEvent(new CustomEvent('alb:initPlayer', {
-                detail: { tracks: tracks, randomIndex: randomIndex, randomParams: randomParams }
-            }));
-        }
-    })();
-</script>
-
 @functions {
-    string GetRandomLabel(string queryParams)
+    string GetRandomLabel(string? queryParams)
     {
         if (string.IsNullOrEmpty(queryParams)) return "Random";
         foreach (var part in queryParams.Split('&'))

@@ -17,10 +17,8 @@ window.albumBridge = (function () {
 
         if (randomIndex >= 0 && randomIndex < tracks.length) {
             albumPlayer.playTrack(randomIndex);
-            if (randomParams) {
-                albumPlayer.setRandomParams(randomParams);
-                albumPlayer.setRandomIndicator(true, getRandomLabel(randomParams));
-            }
+            albumPlayer.setRandomParams(randomParams);
+            albumPlayer.setRandomIndicator(true, getRandomLabel(randomParams));
             albumPlayer.setOnTrackEnded(function () {
                 playRandomFromServer(randomParams);
                 return true;
@@ -52,12 +50,15 @@ window.albumBridge = (function () {
 
     document.body.addEventListener('htmx:afterSwap', function (e) {
         if (e.detail.target.id === 'albums-container') {
-            requestAnimationFrame(initPlayerFromTrackView);
+            initPlayerFromTrackView();
         }
     });
 
     return {
         playTrack: function (index) {
+            albumPlayer.setOnTrackEnded(null);
+            albumPlayer.setRandomParams(null);
+            albumPlayer.setRandomIndicator(false);
             albumPlayer.playTrack(index);
         },
         init: initPlayerFromTrackView
