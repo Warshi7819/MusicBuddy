@@ -29,6 +29,14 @@
     <span class="fs-5 fw-semibold">@Model.Artist.Name</span>
 </div>
 
+@if (Model.Artist.Albums.Count == 0)
+{
+    <div class="text-muted py-4">
+        <i class="bi bi-music-note-beamed me-1"></i>No albums found.
+    </div>
+}
+else
+{
 <div class="row">
 @foreach (var album in Model.Artist.Albums)
 {
@@ -83,24 +91,4 @@
     </div>
 }
 </div>
-
-<script>
-    function setArtistArt(btn) {
-        var artistPath = btn.dataset.artistPath;
-        var albumPath = btn.dataset.albumPath;
-        fetch('/api/artistart?artistPath=' + encodeURIComponent(artistPath) +
-              '&albumPath=' + encodeURIComponent(albumPath), { method: 'PUT' })
-            .then(function (res) {
-                if (!res.ok) throw new Error('Save failed');
-                document.querySelectorAll('.album-art-btn[data-action="set-artist-art"]').forEach(function (b) {
-                    if (b.dataset.artistPath === artistPath) {
-                        b.className = 'btn btn-outline-secondary btn-sm mt-2 album-art-btn';
-                        b.innerHTML = '<i class="bi bi-image me-1"></i><span>Use as artist image</span>';
-                    }
-                });
-                btn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
-                btn.innerHTML = '<i class="bi bi-check me-1"></i><span>Selected</span>';
-            })
-            .catch(function () {});
-    }
-</script>
+}

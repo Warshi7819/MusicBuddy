@@ -13,10 +13,6 @@
     </div>
 </div>
 
-<div id="albums-empty" class="d-none text-muted py-4">
-    <i class="bi bi-music-note-beamed me-1"></i>No albums found.
-</div>
-
 <div class="offcanvas offcanvas-end" tabindex="-1" id="random-offcanvas">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title"><i class="bi bi-shuffle me-2"></i>Random Play</h5>
@@ -101,16 +97,6 @@
     if (!window.__albumsNavStopBound) {
         window.__albumsNavStopBound = true;
 
-        document.body.addEventListener('htmx:afterSwap', function(e) {
-            if (e.detail.target.id === 'albums-container') {
-                var empty = document.getElementById('albums-empty');
-                var hasContent = e.detail.target.querySelectorAll('.album-card, .list-group-item').length > 0;
-                if (empty) {
-                    empty.classList.toggle('d-none', hasContent);
-                }
-            }
-        });
-
         document.body.addEventListener('htmx:beforeSwap', function(e) {
             if (e.detail.target.id === 'albums-container') {
                 stopAlbumPlayer();
@@ -126,5 +112,4 @@
 
 @section Scripts {
     <script src="~/js/album-player.js" asp-append-version="true"></script>
-    <script src="~/js/album-bridge.js" asp-append-version="true"></script>
 }

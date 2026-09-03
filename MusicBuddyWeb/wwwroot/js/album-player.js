@@ -426,7 +426,12 @@ var albumPlayer = (function () {
             if (volEl && volumeGain) volEl.value = Math.round(volumeGain.gain.value * 100);
         },
 
-        playTrack: function (index) {
+        playTrack: function (index, isRandom) {
+            if (!isRandom) {
+                onTrackEnded = null;
+                _randomParams = null;
+                setRandomIndicator(false);
+            }
             loadTrack(index);
         },
 
@@ -495,4 +500,86 @@ var albumPlayer = (function () {
             };
         }
     };
+})();
+
+function setArtistArt(btn) {
+    var artistPath = btn.dataset.artistPath;
+    var albumPath = btn.dataset.albumPath;
+    fetch('/api/artistart?artistPath=' + encodeURIComponent(artistPath) +
+          '&albumPath=' + encodeURIComponent(albumPath), { method: 'PUT' })
+        .then(function (res) {
+            if (!res.ok) throw new Error('Save failed');
+            document.querySelectorAll('.album-art-btn[data-action="set-artist-art"]').forEach(function (b) {
+                if (b.dataset.artistPath === artistPath) {
+                    b.className = 'btn btn-outline-secondary btn-sm mt-2 album-art-btn';
+                    b.innerHTML = '<i class="bi bi-image me-1"></i><span>Use as artist image</span>';
+                }
+            });
+            btn.className = 'btn btn-success btn-sm mt-2 album-art-btn';
+            btn.innerHTML = '<i class="bi bi-check me-1"></i><span>Selected</span>';
+        })
+        .catch(function () {});
+}
+
+(function () {
+    function getRandomLabel(params) {
+        if (!params) return 'Random';
+        if (params.indexOf('artist=') !== -1) {
+            var val = decodeURIComponent(params.split('artist=')[1].split('&')[0]);
+            return 'Random - Artist: ' + val;
+        }
+        if (params.indexOf('genre=') !== -1) {
+            var val = decodeURIComponent(params.split('genre=')[1].split('&')[0]);
+            return 'Random - Genre: ' + val;
+        }
+        return 'Random';
+    }
+
+    function playRandomFromServer(params) {
+        var qs = params ? '&' + params : '';
+        htmx.ajax('GET', '/Albums?handler=RandomTrackView' + qs, {
+            target: '#albums-container',
+            swap: 'innerHTML',
+            pushUrl: 'true'
+        });
+    }
+
+    function initPlayerFromTrackView() {
+        var trackListEl = document.getElementById('track-list');
+        if (!trackListEl) return;
+
+        var tracks;
+        try {
+            tracks = JSON.parse(trackListEl.dataset.tracks || '[]');
+        } catch (e) { return; }
+
+        if (tracks.length === 0) return;
+
+        albumPlayer.init(tracks);
+
+        var randomIndex = parseInt(trackListEl.dataset.randomIndex || '-1');
+        var randomParams = trackListEl.dataset.randomParams || '';
+
+        if (randomIndex >= 0 && randomIndex < tracks.length) {
+            albumPlayer.playTrack(randomIndex, true);
+            albumPlayer.setRandomParams(randomParams);
+            albumPlayer.setRandomIndicator(true, getRandomLabel(randomParams));
+            albumPlayer.setOnTrackEnded(function () {
+                playRandomFromServer(randomParams);
+                return true;
+            });
+        }
+    }
+
+    albumPlayer.initFromView = initPlayerFromTrackView;
+    window.albumBridge = albumPlayer;
+
+    if (!window.__albumPlayerSwapBound) {
+        window.__albumPlayerSwapBound = true;
+        document.body.addEventListener('htmx:afterSwap', function (e) {
+            if (e.detail.target.id === 'albums-container') {
+                initPlayerFromTrackView();
+            }
+        });
+    }
 })();

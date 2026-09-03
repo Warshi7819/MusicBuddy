@@ -1,5 +1,7 @@
 @model List<string>
 
+<small class="text-muted ms-1" id="random-artist-count" hx-swap-oob="true">(@Model.Count)</small>
+
 @foreach (var artist in Model)
 {
     <a href="#"
