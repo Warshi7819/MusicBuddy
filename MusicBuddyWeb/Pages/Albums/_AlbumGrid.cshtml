@@ -86,3 +86,9 @@ else
 }
 </div>
 }
+
+<script>
+    if (window.albumPlayer && typeof window.albumPlayer.destroy === 'function') {
+        window.albumPlayer.destroy();
+    }
+</script>

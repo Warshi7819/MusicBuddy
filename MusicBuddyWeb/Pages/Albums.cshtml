@@ -89,7 +89,9 @@
     }
 
     function stopAlbumPlayer() {
-        if (typeof window.albumPlayer !== 'undefined' && typeof window.albumPlayer.stop === 'function') {
+        if (typeof window.albumPlayer !== 'undefined' && typeof window.albumPlayer.destroy === 'function') {
+            window.albumPlayer.destroy();
+        } else if (typeof window.albumPlayer !== 'undefined' && typeof window.albumPlayer.stop === 'function') {
             window.albumPlayer.stop();
         }
     }
@@ -129,10 +131,15 @@
 
         window.addEventListener('beforeunload', stopAlbumPlayer);
         window.addEventListener('pagehide', stopAlbumPlayer);
-        window.addEventListener('popstate', stopAlbumPlayer);
 
         document.addEventListener('htmx:historyRestore', function() {
-            stopAlbumPlayer();
+            if (document.getElementById('track-list')) {
+                if (window.albumPlayer && typeof window.albumPlayer.initFromView === 'function') {
+                    window.albumPlayer.initFromView();
+                }
+            } else {
+                stopAlbumPlayer();
+            }
             if (document.getElementById('albums-stats')) {
                 restoreArtistGridScroll();
             }

@@ -431,30 +431,24 @@ var albumPlayer = (function () {
         }
     }
 
-    var controlScope = document.getElementById('albums-container') || document;
+    if (!window.__albumPlayerControlsBound) {
+        window.__albumPlayerControlsBound = true;
 
-    function findControl(node, id) {
-        while (node && node !== controlScope) {
-            if (node.id === id) return node;
-            node = node.parentNode;
-        }
-        return null;
+        document.addEventListener('click', function (e) {
+            var el;
+            if ((el = e.target.closest('#alb-play'))) { handlePlayClick(); return; }
+            if ((el = e.target.closest('#alb-pause'))) { handlePauseClick(); return; }
+            if ((el = e.target.closest('#alb-prev'))) { handlePrevClick(); return; }
+            if ((el = e.target.closest('#alb-next'))) { handleNextClick(); return; }
+            if ((el = e.target.closest('#alb-seek-bar'))) { handleSeekClick(e, el); }
+        });
+
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.id === 'alb-volume' && volumeGain) {
+                volumeGain.gain.value = e.target.value / 100;
+            }
+        }, true);
     }
-
-    controlScope.addEventListener('click', function (e) {
-        var el;
-        if ((el = findControl(e.target, 'alb-play'))) { handlePlayClick(); return; }
-        if ((el = findControl(e.target, 'alb-pause'))) { handlePauseClick(); return; }
-        if ((el = findControl(e.target, 'alb-prev'))) { handlePrevClick(); return; }
-        if ((el = findControl(e.target, 'alb-next'))) { handleNextClick(); return; }
-        if ((el = findControl(e.target, 'alb-seek-bar'))) { handleSeekClick(e, el); }
-    });
-
-    controlScope.addEventListener('input', function (e) {
-        if (e.target && e.target.id === 'alb-volume' && volumeGain) {
-            volumeGain.gain.value = e.target.value / 100;
-        }
-    }, true);
 
     function setRandomIndicator(active, label) {
         var dot = document.getElementById('random-indicator-dot');
@@ -473,6 +467,8 @@ var albumPlayer = (function () {
             tracks = trackList || [];
             currentIndex = -1;
             playing = false;
+            onTrackEnded = null;
+            _randomParams = null;
             sources = [];
             ensureAudioContext();
 
@@ -510,14 +506,29 @@ var albumPlayer = (function () {
             }
             playing = false;
             currentIndex = -1;
+            onTrackEnded = null;
+            _randomParams = null;
+            setRandomIndicator(false);
+            if (vuInterval) {
+                clearInterval(vuInterval);
+                vuInterval = null;
+            }
+            if (tickInterval) {
+                clearInterval(tickInterval);
+                tickInterval = null;
+            }
             if (typeof vuMeter !== 'undefined') {
                 vuMeter.setLevels(0, 0);
-                vuMeter.destroy();
             }
             showPauseState();
             highlightTrack(-1);
             var nowTitle = document.getElementById('alb-now-title');
             if (nowTitle) nowTitle.textContent = '';
+            var nowArtist = document.getElementById('alb-now-artist');
+            if (nowArtist) {
+                nowArtist.textContent = '';
+                nowArtist.style.display = 'none';
+            }
             var timeEl = document.getElementById('alb-time');
             if (timeEl) timeEl.textContent = '0:00';
             var durEl = document.getElementById('alb-duration');
@@ -526,11 +537,17 @@ var albumPlayer = (function () {
             if (fillEl) fillEl.style.width = '0%';
         },
 
-        dispose: function () {
+        destroy: function () {
             this.stop();
-            clearInterval(tickInterval);
-            tickInterval = null;
-            stopVu();
+            tracks = [];
+            sources = [];
+            if (typeof vuMeter !== 'undefined') {
+                vuMeter.destroy('alb-vu-canvas');
+            }
+        },
+
+        dispose: function () {
+            this.destroy();
             if (audioCtx && audioCtx.state !== 'closed') {
                 audioCtx.close().catch(function () {});
             }
@@ -618,20 +635,33 @@ function setArtistArt(btn) {
 
     function initPlayerFromTrackView() {
         var trackListEl = document.getElementById('track-list');
-        if (!trackListEl) return;
+        if (!trackListEl) {
+            albumPlayer.destroy();
+            return;
+        }
+
+        if (trackListEl._albumPlayerInitialized) return;
+        trackListEl._albumPlayerInitialized = true;
+
+        var rawTracks = trackListEl.dataset.tracks || trackListEl.getAttribute('data-tracks') || '[]';
+        var tracks;
+        try {
+            tracks = JSON.parse(rawTracks);
+        } catch (e) {
+            albumPlayer.destroy();
+            return;
+        }
+
+        if (!tracks || tracks.length === 0) {
+            albumPlayer.destroy();
+            return;
+        }
 
         var canvasEl = document.getElementById('alb-vu-canvas');
         if (canvasEl && typeof vuMeter !== 'undefined') {
-            vuMeter.destroy();
+            vuMeter.destroy('alb-vu-canvas');
             vuMeter.init('alb-vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');
         }
-
-        var tracks;
-        try {
-            tracks = JSON.parse(trackListEl.dataset.tracks || '[]');
-        } catch (e) { return; }
-
-        if (tracks.length === 0) return;
 
         albumPlayer.init(tracks);
 
@@ -650,13 +680,27 @@ function setArtistArt(btn) {
     }
 
     albumPlayer.initFromView = initPlayerFromTrackView;
+    window.albumPlayer = albumPlayer;
     window.albumBridge = albumPlayer;
 
     if (!window.__albumPlayerSwapBound) {
         window.__albumPlayerSwapBound = true;
+
         document.body.addEventListener('htmx:afterSwap', function (e) {
-            if (e.detail.target.id === 'albums-container') {
+            if (e.detail.target && e.detail.target.id === 'albums-container') {
+                if (document.getElementById('track-list')) {
+                    initPlayerFromTrackView();
+                } else {
+                    albumPlayer.destroy();
+                }
+            }
+        });
+
+        document.body.addEventListener('htmx:historyRestore', function () {
+            if (document.getElementById('track-list')) {
                 initPlayerFromTrackView();
+            } else {
+                albumPlayer.destroy();
             }
         });
     }

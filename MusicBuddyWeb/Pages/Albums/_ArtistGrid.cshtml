@@ -65,6 +65,12 @@ else
 </div>
 }
 
+<script>
+    if (window.albumPlayer && typeof window.albumPlayer.destroy === 'function') {
+        window.albumPlayer.destroy();
+    }
+</script>
+
 @functions {
     string? GetArtistArtPath(ArtistDto artist, Dictionary<string, string> artMap)
     {

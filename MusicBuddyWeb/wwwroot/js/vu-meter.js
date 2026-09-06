@@ -524,6 +524,16 @@ var vuMeter = (function () {
     // ---- instances ----
 
     function createInstance(canvasId, style) {
+        if (instances[canvasId]) {
+            try {
+                if (typeof instances[canvasId].destroy === 'function') {
+                    instances[canvasId].destroy();
+                } else if (instances[canvasId].animFrame) {
+                    cancelAnimationFrame(instances[canvasId].animFrame);
+                    delete instances[canvasId];
+                }
+            } catch (e) {}
+        }
         var canvas = document.getElementById(canvasId);
         if (!canvas) return null;
         var ctx = canvas.getContext('2d');
@@ -541,6 +551,13 @@ var vuMeter = (function () {
             animFrame: null
         };
 
+        function destroy() {
+            if (state.animFrame) cancelAnimationFrame(state.animFrame);
+            delete instances[canvasId];
+            if (activeId === canvasId) activeId = null;
+        }
+
+        state.destroy = destroy;
         instances[canvasId] = state;
         activeId = canvasId;
 
@@ -578,11 +595,7 @@ var vuMeter = (function () {
                 state.targetLeft = clamp01(left);
                 state.targetRight = clamp01(right);
             },
-            destroy: function () {
-                if (state.animFrame) cancelAnimationFrame(state.animFrame);
-                delete instances[canvasId];
-                if (activeId === canvasId) activeId = null;
-            }
+            destroy: destroy
         };
     }
 
@@ -602,10 +615,20 @@ var vuMeter = (function () {
             inst.targetRight = clamp01(right);
         },
 
-        destroy: function () {
-            if (activeId && instances[activeId]) {
-                instances[activeId].destroy();
+        destroy: function (canvasId) {
+            var targetId = canvasId || activeId;
+            if (targetId && instances[targetId]) {
+                if (typeof instances[targetId].destroy === 'function') {
+                    instances[targetId].destroy();
+                } else {
+                    if (instances[targetId].animFrame) cancelAnimationFrame(instances[targetId].animFrame);
+                    delete instances[targetId];
+                }
+            }
+            if (!canvasId || activeId === canvasId) {
+                activeId = null;
             }
         }
     };
 })();
+window.vuMeter = vuMeter;

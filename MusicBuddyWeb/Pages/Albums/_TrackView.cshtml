@@ -135,6 +135,12 @@
     </div>
 </div>
 
+<script>
+    if (window.albumPlayer && typeof window.albumPlayer.initFromView === 'function') {
+        window.albumPlayer.initFromView();
+    }
+</script>
+
 @functions {
     string GetRandomLabel(string? queryParams)
     {
