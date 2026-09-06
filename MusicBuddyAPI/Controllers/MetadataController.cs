@@ -25,37 +25,44 @@ public class MetadataController : ControllerBase
         [FromQuery] string? song = null,
         [FromQuery] string? artist = null,
         [FromQuery] string? genre = null,
-        [FromQuery] int max = 100)
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortAsc = true)
     {
         try
         {
             // Legacy single-query mode: if q is provided but no field-specific params, search all fields
-            List<TrackMetadata> results;
+            (List<TrackMetadata> items, int total) result;
             if (!string.IsNullOrWhiteSpace(q) && string.IsNullOrWhiteSpace(song) && string.IsNullOrWhiteSpace(artist) && string.IsNullOrWhiteSpace(genre))
             {
-                results = await _metadata.SearchAsync(song: q, maxResults: max);
+                result = await _metadata.SearchAsync(song: q, skip: skip, take: take, sortBy: sortBy, sortAsc: sortAsc);
             }
             else
             {
-                results = await _metadata.SearchAsync(song, artist, genre, max);
+                result = await _metadata.SearchAsync(song, artist, genre, skip, take, sortBy, sortAsc);
             }
 
-            return Ok(results.Select(t => new
+            return Ok(new
             {
-                t.Id,
-                t.FilePath,
-                t.UrlPath,
-                t.FileName,
-                t.FileSize,
-                t.TrackName,
-                t.Artist,
-                t.Album,
-                t.Genre,
-                t.Year,
-                t.DurationSeconds,
-                t.ChannelCount,
-                t.ArtistFolder
-            }));
+                totalCount = result.total,
+                items = result.items.Select(t => new
+                {
+                    t.Id,
+                    t.FilePath,
+                    t.UrlPath,
+                    t.FileName,
+                    t.FileSize,
+                    t.TrackName,
+                    t.Artist,
+                    t.Album,
+                    t.Genre,
+                    t.Year,
+                    t.DurationSeconds,
+                    t.ChannelCount,
+                    t.ArtistFolder
+                })
+            });
         }
         catch (Exception ex)
         {

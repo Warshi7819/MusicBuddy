@@ -21,6 +21,8 @@
     var currentLibPath = '';
     var searchSortField = '';
     var searchSortAsc = true;
+    var searchPage = 0;
+    var searchPageSize = 50;
 
     // --- Self-contained playback ---
     var audio = new Audio();
@@ -275,7 +277,8 @@
     }
 
     // --- Search mode ---
-    function doSearch() {
+    function doSearch(page) {
+        if (typeof page === 'number') searchPage = page;
         var songVal = ($('pe-search-song') || {}).value || '';
         var artistVal = ($('pe-search-artist') || {}).value || '';
         var genreVal = ($('pe-search-genre') || {}).value || '';
@@ -288,6 +291,10 @@
         if (songVal.trim()) qs += '&song=' + encodeURIComponent(songVal.trim());
         if (artistVal.trim()) qs += '&artist=' + encodeURIComponent(artistVal.trim());
         if (genreVal.trim()) qs += '&genre=' + encodeURIComponent(genreVal.trim());
+        qs += '&skip=' + (searchPage * searchPageSize) + '&take=' + searchPageSize;
+        if (searchSortField) {
+            qs += '&sortBy=' + encodeURIComponent(searchSortField) + '&sortAsc=' + searchSortAsc;
+        }
         htmx.ajax('GET', '/Playlists?handler=Search&' + qs, {
             target: '#pe-library',
             swap: 'innerHTML'
@@ -299,31 +306,13 @@
 
     // --- Search sort ---
     function sortSearchResults(field) {
-        var resultsEl = $('pe-search-results');
-        if (!resultsEl) return;
         if (searchSortField === field) {
             searchSortAsc = !searchSortAsc;
         } else {
             searchSortField = field;
             searchSortAsc = true;
         }
-        var rows = Array.from(resultsEl.querySelectorAll('.pe-library-row'));
-        rows.sort(function (a, b) {
-            var va = a.getAttribute('data-' + field) || '';
-            var vb = b.getAttribute('data-' + field) || '';
-            var cmp = va.localeCompare(vb);
-            return searchSortAsc ? cmp : -cmp;
-        });
-        rows.forEach(function (row) { resultsEl.appendChild(row); });
-        document.querySelectorAll('.pe-sort-col').forEach(function (el) {
-            var icon = el.querySelector('i');
-            if (!icon) return;
-            if (el.getAttribute('data-sort-field') === field) {
-                icon.className = 'bi ' + (searchSortAsc ? 'bi-arrow-down' : 'bi-arrow-up') + ' ms-1 small';
-            } else {
-                icon.className = 'bi bi-arrow-down-up ms-1 small';
-            }
-        });
+        doSearch(searchPage);
     }
 
     // --- API helpers ---
@@ -625,10 +614,10 @@
     // Search
     var searchBtn = $('pe-search-btn');
     var searchInputs = ['pe-search-song', 'pe-search-artist', 'pe-search-genre'].map(function (id) { return $(id); }).filter(Boolean);
-    if (searchBtn) searchBtn.addEventListener('click', function () { doSearch(); });
+    if (searchBtn) searchBtn.addEventListener('click', function () { searchPage = 0; doSearch(); });
     searchInputs.forEach(function (input) {
         input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+            if (e.key === 'Enter') { e.preventDefault(); searchPage = 0; doSearch(); }
         });
     });
 
@@ -826,10 +815,31 @@
         if (dur > 0) audio.currentTime = (this.value / 1000) * dur;
     });
 
+    // --- Sort icon restore (safety net after HTMX swap) ---
+    function restoreSortIcons() {
+        document.querySelectorAll('.pe-sort-col').forEach(function (el) {
+            var icon = el.querySelector('i');
+            if (!icon) return;
+            if (searchSortField && el.getAttribute('data-sort-field') === searchSortField) {
+                icon.className = 'bi bi-' + (searchSortAsc ? 'arrow-down' : 'arrow-up') + ' ms-1 small';
+            } else {
+                icon.className = 'bi bi-arrow-down-up ms-1 small';
+            }
+        });
+    }
+
     // HTMX callbacks
     document.addEventListener('htmx:afterSwap', function (e) {
         if (e.detail.target.id === 'pe-library') {
             renderBreadcrumb(currentLibPath);
+            restoreSortIcons();
+            var pageBtns = e.detail.target.querySelectorAll('.pe-search-page-btn');
+            pageBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var page = parseInt(this.getAttribute('data-page'));
+                    if (!isNaN(page)) doSearch(page);
+                });
+            });
         }
         if (e.detail.target.id === 'pe-tracks') {
             updateTrackCount();

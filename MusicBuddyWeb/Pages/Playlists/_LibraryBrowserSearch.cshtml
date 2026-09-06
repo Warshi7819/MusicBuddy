@@ -7,6 +7,10 @@
     if (!string.IsNullOrWhiteSpace(Model.Artist)) queryParts.Add("artist: " + Model.Artist);
     if (!string.IsNullOrWhiteSpace(Model.Genre)) queryParts.Add("genre: " + Model.Genre);
     var queryDisplay = string.Join(", ", queryParts);
+    var startNum = Model.Skip + 1;
+    var endNum = Math.Min(Model.Skip + Model.Results.Count, Model.TotalCount);
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.Take);
+    var currentPage = Model.Take > 0 ? (Model.Skip / Model.Take) + 1 : 1;
 }
 
 @if (!hasQuery)
@@ -24,12 +28,19 @@ else if (Model.Results.Count == 0)
 }
 else
 {
-    <div class="pe-section-header">Results (@Model.Results.Count)</div>
+    <div class="pe-section-header">Results @startNum&ndash;@endNum of @Model.TotalCount</div>
     <div class="pe-search-header d-flex align-items-center px-2 py-1 small text-muted fw-semibold user-select-none border-bottom">
         <span style="width: 2.5rem;"></span>
-        <span class="pe-sort-col pe-col-song" data-sort-field="track-name">Song Name <i class="bi bi-arrow-down-up ms-1 small"></i></span>
-        <span class="pe-sort-col pe-col-artist" data-sort-field="artist">Artist <i class="bi bi-arrow-down-up ms-1 small"></i></span>
-        <span class="pe-sort-col pe-col-genre" data-sort-field="genre">Genre <i class="bi bi-arrow-down-up ms-1 small"></i></span>
+        @{
+            string SortIcon(string field)
+            {
+                if (Model.SortBy != field) return "bi-arrow-down-up";
+                return Model.SortAsc ? "bi-arrow-down" : "bi-arrow-up";
+            }
+        }
+        <span class="pe-sort-col pe-col-song" data-sort-field="track-name">Song Name <i class="bi bi-@SortIcon("track-name") ms-1 small"></i></span>
+        <span class="pe-sort-col pe-col-artist" data-sort-field="artist">Artist <i class="bi bi-@SortIcon("artist") ms-1 small"></i></span>
+        <span class="pe-sort-col pe-col-genre" data-sort-field="genre">Genre <i class="bi bi-@SortIcon("genre") ms-1 small"></i></span>
     </div>
     <div id="pe-search-results">
         @foreach (var t in Model.Results)
@@ -65,4 +76,16 @@ else
             </div>
         }
     </div>
+    @if (totalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-center gap-2 py-2 px-2 border-top">
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-search-page-btn" data-page="@(currentPage - 2)" @(currentPage <= 1 ? "disabled" : "")>
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <span class="small text-muted">Page @currentPage of @totalPages</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-search-page-btn" data-page="@(currentPage)" @(currentPage >= totalPages ? "disabled" : "")>
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    }
 }

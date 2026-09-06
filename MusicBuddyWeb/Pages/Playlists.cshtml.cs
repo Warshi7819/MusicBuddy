@@ -73,7 +73,7 @@ public class PlaylistsModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnGetSearchAsync(string? song = null, string? artist = null, string? genre = null, string type = "mp3")
+    public async Task<IActionResult> OnGetSearchAsync(string? song = null, string? artist = null, string? genre = null, string type = "mp3", int skip = 0, int take = 50, string? sortBy = null, bool sortAsc = true)
     {
         var client = _http.CreateClient("MusicBuddyAPI");
         try
@@ -82,17 +82,25 @@ public class PlaylistsModel : PageModel
             if (!string.IsNullOrWhiteSpace(song)) qs.Add($"song={Uri.EscapeDataString(song)}");
             if (!string.IsNullOrWhiteSpace(artist)) qs.Add($"artist={Uri.EscapeDataString(artist)}");
             if (!string.IsNullOrWhiteSpace(genre)) qs.Add($"genre={Uri.EscapeDataString(genre)}");
-            qs.Add("max=100");
+            qs.Add($"skip={skip}");
+            qs.Add($"take={take}");
+            if (!string.IsNullOrWhiteSpace(sortBy)) qs.Add($"sortBy={Uri.EscapeDataString(sortBy)}");
+            qs.Add($"sortAsc={sortAsc.ToString().ToLowerInvariant()}");
             var url = "/api/metadata/search?" + string.Join("&", qs);
 
-            var results = await client.GetFromJsonAsync<List<TrackSearchResult>>(url);
+            var response = await client.GetFromJsonAsync<SearchResponse>(url);
             return Partial("Playlists/_LibraryBrowserSearch", new TrackSearchListModel
             {
                 FileType = type ?? "mp3",
                 Song = song,
                 Artist = artist,
                 Genre = genre,
-                Results = results ?? new()
+                Results = response?.Items ?? new(),
+                TotalCount = response?.TotalCount ?? 0,
+                Skip = skip,
+                Take = take,
+                SortBy = sortBy,
+                SortAsc = sortAsc
             });
         }
         catch (Exception ex)
@@ -344,4 +352,15 @@ public class TrackSearchListModel
     public string? Artist { get; set; }
     public string? Genre { get; set; }
     public List<TrackSearchResult> Results { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Skip { get; set; }
+    public int Take { get; set; } = 50;
+    public string? SortBy { get; set; }
+    public bool SortAsc { get; set; } = true;
+}
+
+public class SearchResponse
+{
+    public int TotalCount { get; set; }
+    public List<TrackSearchResult> Items { get; set; } = new();
 }

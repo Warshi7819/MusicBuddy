@@ -225,7 +225,10 @@ public class TrackMetadataService
         await db.SaveChangesAsync();
     }
 
-    public async Task<List<TrackMetadata>> SearchAsync(string? song = null, string? artist = null, string? genre = null, int maxResults = 100)
+    public async Task<(List<TrackMetadata> Items, int Total)> SearchAsync(
+        string? song = null, string? artist = null, string? genre = null,
+        int skip = 0, int take = 50,
+        string? sortBy = null, bool sortAsc = true)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MusicBuddyDbContext>();
@@ -257,11 +260,36 @@ public class TrackMetadataService
                     t.Genre != null && t.Genre.ToLower().Contains(term)));
         }
 
-        return await query
-            .OrderBy(t => t.ArtistFolder)
-            .ThenBy(t => t.FileName)
-            .Take(maxResults)
-            .ToListAsync();
+        var total = await query.CountAsync();
+
+        IOrderedQueryable<TrackMetadata> ordered;
+        switch (sortBy)
+        {
+            case "artist":
+                ordered = sortAsc
+                    ? query.OrderBy(t => t.Artist ?? "").ThenBy(t => t.TrackName ?? t.FileName)
+                    : query.OrderByDescending(t => t.Artist ?? "").ThenBy(t => t.TrackName ?? t.FileName);
+                break;
+            case "genre":
+                ordered = sortAsc
+                    ? query.OrderBy(t => t.Genre ?? "").ThenBy(t => t.Artist ?? "").ThenBy(t => t.TrackName ?? t.FileName)
+                    : query.OrderByDescending(t => t.Genre ?? "").ThenBy(t => t.Artist ?? "").ThenBy(t => t.TrackName ?? t.FileName);
+                break;
+            case "track-name":
+                ordered = sortAsc
+                    ? query.OrderBy(t => t.TrackName ?? t.FileName).ThenBy(t => t.Artist ?? "")
+                    : query.OrderByDescending(t => t.TrackName ?? t.FileName).ThenBy(t => t.Artist ?? "");
+                break;
+            default:
+                ordered = sortAsc
+                    ? query.OrderBy(t => t.ArtistFolder).ThenBy(t => t.FileName)
+                    : query.OrderByDescending(t => t.ArtistFolder).ThenByDescending(t => t.FileName);
+                break;
+        }
+
+        var items = await ordered.Skip(skip).Take(take).ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<int> GetTrackCountAsync()
