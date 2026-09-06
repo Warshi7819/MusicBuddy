@@ -38,11 +38,7 @@ else
 
     <div class="col-6 col-md-4 col-lg-3 mb-3">
         <div class="card h-100 album-card" style="cursor:pointer;">
-            <a href="/Albums?artist=@Uri.EscapeDataString(Model.Artist.Name)&album=@Uri.EscapeDataString(album.Path)"
-               hx-get="/Albums?handler=TrackView&artist=@Uri.EscapeDataString(Model.Artist.Name)&album=@Uri.EscapeDataString(album.Path)"
-               hx-target="#albums-container"
-               hx-swap="innerHTML"
-               hx-push-url="true"
+            <a href="/AlbumPlayer?artist=@Uri.EscapeDataString(Model.Artist.Name)&album=@Uri.EscapeDataString(album.Path)"
                class="text-decoration-none">
                 <div class="album-art-wrap">
                     @if (album.FirstTrackPath is not null)

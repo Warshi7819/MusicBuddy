@@ -624,15 +624,6 @@ function setArtistArt(btn) {
         return 'Random';
     }
 
-    function playRandomFromServer(params) {
-        var qs = params ? '&' + params : '';
-        htmx.ajax('GET', '/Albums?handler=RandomTrackView' + qs, {
-            target: '#albums-container',
-            swap: 'innerHTML',
-            pushUrl: 'true'
-        });
-    }
-
     function initPlayerFromTrackView() {
         var trackListEl = document.getElementById('track-list');
         if (!trackListEl) {
@@ -673,7 +664,7 @@ function setArtistArt(btn) {
             albumPlayer.setRandomParams(randomParams);
             albumPlayer.setRandomIndicator(true, getRandomLabel(randomParams));
             albumPlayer.setOnTrackEnded(function () {
-                playRandomFromServer(randomParams);
+                window.location.href = '/AlbumPlayer?random=true' + (randomParams ? '&' + randomParams : '');
                 return true;
             });
         }
@@ -682,28 +673,6 @@ function setArtistArt(btn) {
     albumPlayer.initFromView = initPlayerFromTrackView;
     window.albumPlayer = albumPlayer;
     window.albumBridge = albumPlayer;
-
-    if (!window.__albumPlayerSwapBound) {
-        window.__albumPlayerSwapBound = true;
-
-        document.body.addEventListener('htmx:afterSwap', function (e) {
-            if (e.detail.target && e.detail.target.id === 'albums-container') {
-                if (document.getElementById('track-list')) {
-                    initPlayerFromTrackView();
-                } else {
-                    albumPlayer.destroy();
-                }
-            }
-        });
-
-        document.body.addEventListener('htmx:historyRestore', function () {
-            if (document.getElementById('track-list')) {
-                initPlayerFromTrackView();
-            } else {
-                albumPlayer.destroy();
-            }
-        });
-    }
 
     initPlayerFromTrackView();
 })();
