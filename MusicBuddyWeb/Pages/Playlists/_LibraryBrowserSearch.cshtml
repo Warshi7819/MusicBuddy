@@ -48,7 +48,7 @@ else
                 <input type="checkbox" class="form-check-input me-2 pe-check" aria-label="Select track">
                 <button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"
                         data-path="@t.UrlPath"><i class="bi bi-play-circle"></i></button>
-                <span class="text-truncate pe-col-song" title="@displayName@(string.IsNullOrWhiteSpace(t.Artist) ? "" : " — " + t.Artist)@(t.Year.HasValue ? " (" + t.Year + ")" : "")">
+                <span class="text-truncate pe-col-song" title="@((string.IsNullOrWhiteSpace(t.Artist) ? "Unknown" : t.Artist) + " - " + (string.IsNullOrWhiteSpace(t.Album) ? "Unknown" : t.Album) + " - " + displayName)@(t.Year.HasValue ? " (" + t.Year + ")" : "")">
                     @displayName
                     @if (t.Year.HasValue)
                     {
