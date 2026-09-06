@@ -12,6 +12,12 @@ public class AlbumCatalogService
     private readonly SemaphoreSlim _scanLock = new(1, 1);
     private Task<AlbumCatalogPayload>? _warmTask;
 
+    public bool IsRefreshing { get; private set; }
+    public int TotalArtists { get; private set; }
+    public int ScannedArtists { get; private set; }
+    public DateTime? LastRefreshTime { get; private set; }
+    public string? CurrentError { get; private set; }
+
     public AlbumCatalogService(
         FileCacheService fileCache,
         IMemoryCache memoryCache,
@@ -61,18 +67,60 @@ public class AlbumCatalogService
 
     public async Task RefreshAsync()
     {
-        _memoryCache.Remove(CacheKey);
+        if (IsRefreshing) return;
 
         await _scanLock.WaitAsync();
         try
         {
-            _memoryCache.Remove(CacheKey);
-            await ScanAsync();
+            if (IsRefreshing) return;
+            IsRefreshing = true;
+            CurrentError = null;
+            TotalArtists = 0;
+            ScannedArtists = 0;
         }
         finally
         {
             _scanLock.Release();
         }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _memoryCache.Remove(CacheKey);
+                await _scanLock.WaitAsync();
+                try
+                {
+                    _memoryCache.Remove(CacheKey);
+                    await ScanAsync();
+                }
+                finally
+                {
+                    _scanLock.Release();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Album catalog refresh failed");
+                CurrentError = ex.Message;
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+        });
+    }
+
+    public Task<AlbumCatalogStatusDto> GetStatusAsync()
+    {
+        return Task.FromResult(new AlbumCatalogStatusDto
+        {
+            IsRefreshing = IsRefreshing,
+            TotalArtists = TotalArtists,
+            ScannedArtists = ScannedArtists,
+            LastRefreshTime = LastRefreshTime,
+            Error = CurrentError
+        });
     }
 
     private async Task<AlbumCatalogPayload> ScanAsync()
@@ -93,8 +141,13 @@ public class AlbumCatalogService
             var urlPrefix = _fileCache.GetUrlPrefix("mp3");
             var artists = new List<ArtistDto>();
 
-            foreach (var artistDir in Directory.EnumerateDirectories(root)
-                .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            var artistDirs = Directory.EnumerateDirectories(root)
+                .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            TotalArtists = artistDirs.Count;
+            ScannedArtists = 0;
+
+            foreach (var artistDir in artistDirs)
             {
                 var artistName = Path.GetFileName(artistDir);
                 var albums = new List<AlbumDto>();
@@ -127,6 +180,8 @@ public class AlbumCatalogService
                     AlbumCount = albums.Count,
                     Albums = albums.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList()
                 });
+
+                ScannedArtists++;
             }
 
             var looseFiles = Directory.EnumerateFiles(root, "*.mp3")
@@ -159,11 +214,21 @@ public class AlbumCatalogService
             var payload = new AlbumCatalogPayload { Artists = artists };
             _memoryCache.Set(CacheKey, payload);
 
+            LastRefreshTime = DateTime.UtcNow;
             _logger.LogInformation("Album catalog scan complete: {Count} artists, {AlbumCount} albums",
                 artists.Count, artists.Sum(a => a.AlbumCount));
             return payload;
         });
     }
+}
+
+public class AlbumCatalogStatusDto
+{
+    public bool IsRefreshing { get; set; }
+    public int TotalArtists { get; set; }
+    public int ScannedArtists { get; set; }
+    public DateTime? LastRefreshTime { get; set; }
+    public string? Error { get; set; }
 }
 
 public class AlbumCatalogPayload

@@ -1,0 +1,68 @@
+@model TrackSearchListModel
+
+@{
+    var hasQuery = !string.IsNullOrWhiteSpace(Model.Song) || !string.IsNullOrWhiteSpace(Model.Artist) || !string.IsNullOrWhiteSpace(Model.Genre);
+    var queryParts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.Song)) queryParts.Add("song: " + Model.Song);
+    if (!string.IsNullOrWhiteSpace(Model.Artist)) queryParts.Add("artist: " + Model.Artist);
+    if (!string.IsNullOrWhiteSpace(Model.Genre)) queryParts.Add("genre: " + Model.Genre);
+    var queryDisplay = string.Join(", ", queryParts);
+}
+
+@if (!hasQuery)
+{
+    <div class="text-center text-muted py-4">
+        <i class="bi bi-search" style="font-size: 2rem;"></i>
+        <div class="mt-2">Type to search by song name, artist, or genre</div>
+    </div>
+}
+else if (Model.Results.Count == 0)
+{
+    <div class="text-center text-muted py-4">
+        <i class="bi bi-search me-2"></i>No results for "@queryDisplay"
+    </div>
+}
+else
+{
+    <div class="pe-section-header">Results (@Model.Results.Count)</div>
+    <div class="pe-search-header d-flex align-items-center px-2 py-1 small text-muted fw-semibold user-select-none border-bottom">
+        <span style="width: 2.5rem;"></span>
+        <span class="pe-sort-col pe-col-song" data-sort-field="track-name">Song Name <i class="bi bi-arrow-down-up ms-1 small"></i></span>
+        <span class="pe-sort-col pe-col-artist" data-sort-field="artist">Artist <i class="bi bi-arrow-down-up ms-1 small"></i></span>
+        <span class="pe-sort-col pe-col-genre" data-sort-field="genre">Genre <i class="bi bi-arrow-down-up ms-1 small"></i></span>
+    </div>
+    <div id="pe-search-results">
+        @foreach (var t in Model.Results)
+        {
+            var displayName = !string.IsNullOrWhiteSpace(t.TrackName) ? t.TrackName : System.IO.Path.GetFileNameWithoutExtension(t.FileName);
+            <div class="list-group-item pe-library-row d-flex align-items-center"
+                 draggable="true"
+                 data-kind="file"
+                 data-path="@t.UrlPath"
+                 data-name="@t.FileName"
+                 data-size="@t.FileSize"
+                 data-channel-count="@t.ChannelCount"
+                 data-track-name="@displayName.ToLowerInvariant()"
+                 data-artist="@((t.Artist ?? "").ToLowerInvariant())"
+                 data-genre="@((t.Genre ?? "").ToLowerInvariant())">
+                <input type="checkbox" class="form-check-input me-2 pe-check" aria-label="Select track">
+                <button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"
+                        data-path="@t.UrlPath"><i class="bi bi-play-circle"></i></button>
+                <span class="text-truncate pe-col-song" title="@displayName@(string.IsNullOrWhiteSpace(t.Artist) ? "" : " — " + t.Artist)@(t.Year.HasValue ? " (" + t.Year + ")" : "")">
+                    @displayName
+                    @if (t.Year.HasValue)
+                    {
+                        <small class="text-muted ms-1">(@t.Year)</small>
+                    }
+                </span>
+                <span class="text-truncate pe-col-artist" title="@t.Artist">@t.Artist</span>
+                <span class="pe-col-genre">
+                    @if (!string.IsNullOrWhiteSpace(t.Genre))
+                    {
+                        <span class="badge text-bg-secondary">@t.Genre</span>
+                    }
+                </span>
+            </div>
+        }
+    </div>
+}

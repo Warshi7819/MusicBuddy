@@ -65,13 +65,36 @@ public class AlbumsController : ControllerBase
             _cache.ClearAll("mp3");
 
             await _catalog.RefreshAsync();
-            await _artPrewarmer.PrewarmAsync(HttpContext.RequestAborted);
-            return NoContent();
+            return Accepted(new { message = "Album catalog refresh started" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error refreshing albums");
             return StatusCode(500, new { message = "Error refreshing albums" });
+        }
+    }
+
+    [HttpGet("status")]
+    public async Task<IActionResult> Status()
+    {
+        try
+        {
+            var status = await _catalog.GetStatusAsync();
+            var payload = await _catalog.GetPayloadAsync();
+            return Ok(new
+            {
+                status.IsRefreshing,
+                status.TotalArtists,
+                status.ScannedArtists,
+                status.LastRefreshTime,
+                status.Error,
+                TotalAlbums = payload.Artists.Sum(a => a.AlbumCount)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting album catalog status");
+            return StatusCode(500, new { message = "Error getting status" });
         }
     }
 

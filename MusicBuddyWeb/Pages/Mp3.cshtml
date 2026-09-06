@@ -84,15 +84,15 @@
                 </div>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;"
-                            hx-get="/Playlists/PlaylistEditor?handler=PlaylistList&type=mp3"
+                            hx-get="/Playlists?handler=PlaylistList&type=mp3"
                             hx-trigger="load, revealed"
                             hx-swap="innerHTML"
                             hx-on::after-request="mp3Bridge.onPlaylistListLoaded(this)">
                         <option value="">-- All files --</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-manage-btn" title="Open playlist manager">
+                    <a href="/Playlists?type=mp3" class="btn btn-sm btn-outline-primary" title="Open playlist manager">
                         <i class="bi bi-pencil-square"></i>
-                    </button>
+                    </a>
                 </div>
             </div>
             <div class="list-group list-group-flush" id="mp3-playlist" style="max-height: 500px; overflow-y: auto;">
@@ -117,7 +117,7 @@
                     return;
                 }
                 currentPlaylistId = playlistId;
-                fetch('/Playlists/PlaylistEditor?handler=TrackList&playlistId=' + playlistId)
+                fetch('/Playlists?handler=TrackList&playlistId=' + playlistId)
                     .then(function (res) { return res.text(); })
                     .then(function (html) {
                         var parser = new DOMParser();
@@ -162,11 +162,6 @@
             mp3Player.init([]);
 
             var select = document.getElementById('pm-playlist-select');
-            var manageBtn = document.getElementById('pm-manage-btn');
-
-            manageBtn.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
-            });
 
             select.addEventListener('change', function () {
                 var id = this.value ? parseInt(this.value) : null;
@@ -183,5 +178,4 @@
             });
         })();
     </script>
-    <partial name="Shared/_PlaylistEditorModal" />
 }

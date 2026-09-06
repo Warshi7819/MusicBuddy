@@ -17,7 +17,9 @@ builder.Services.AddSingleton<AlbumCatalogService>();
 builder.Services.AddSingleton<RandomTrackService>();
 builder.Services.AddSingleton<AlbumArtExtractor>();
 builder.Services.AddSingleton<ArtistArtPrewarmer>();
+builder.Services.AddSingleton<TrackMetadataService>();
 builder.Services.AddHostedService<AlbumCacheWarmer>();
+builder.Services.AddHostedService<MetadataStartupWarmer>();
 
 builder.Services.AddDbContext<MusicBuddyDbContext>(options =>
     options.UseSqlite("Data Source=musicbuddy.db"));

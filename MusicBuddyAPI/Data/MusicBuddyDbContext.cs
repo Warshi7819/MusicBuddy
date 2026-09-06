@@ -13,6 +13,7 @@ public class MusicBuddyDbContext : DbContext
     public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<ArtistArtPreference> ArtistArtPreferences => Set<ArtistArtPreference>();
+    public DbSet<TrackMetadata> TrackMetadata => Set<TrackMetadata>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,16 @@ public class MusicBuddyDbContext : DbContext
 
         modelBuilder.Entity<ArtistArtPreference>()
             .HasIndex(a => new { a.UserId, a.ArtistPath })
+            .IsUnique();
+
+        modelBuilder.Entity<TrackMetadata>()
+            .HasIndex(t => t.Artist);
+        modelBuilder.Entity<TrackMetadata>()
+            .HasIndex(t => t.Genre);
+        modelBuilder.Entity<TrackMetadata>()
+            .HasIndex(t => t.TrackName);
+        modelBuilder.Entity<TrackMetadata>()
+            .HasIndex(t => t.FilePath)
             .IsUnique();
     }
 }

@@ -41,6 +41,11 @@ public class PlaylistsController : ControllerBase
             .OrderBy(t => t.SortOrder)
             .ToListAsync();
 
+        var filePaths = tracks.Select(t => t.FilePath).ToList();
+        var metadataMap = await _db.TrackMetadata
+            .Where(m => filePaths.Contains(m.UrlPath))
+            .ToDictionaryAsync(m => m.UrlPath);
+
         return Ok(new PlaylistDetail
         {
             Id = playlist.Id,
@@ -48,14 +53,19 @@ public class PlaylistsController : ControllerBase
             FileType = playlist.FileType,
             CreatedAt = playlist.CreatedAt,
             UpdatedAt = playlist.UpdatedAt,
-            Tracks = tracks.Select(t => new PlaylistTrackDto
-            {
-                Id = t.Id,
-                FilePath = t.FilePath,
-                FileName = t.FileName,
-                FileSize = t.FileSize,
-                ChannelCount = t.ChannelCount,
-                SortOrder = t.SortOrder
+            Tracks = tracks.Select(t => {
+                metadataMap.TryGetValue(t.FilePath, out var meta);
+                return new PlaylistTrackDto
+                {
+                    Id = t.Id,
+                    FilePath = t.FilePath,
+                    FileName = t.FileName,
+                    TrackName = meta?.TrackName,
+                    Artist = meta?.Artist,
+                    FileSize = t.FileSize,
+                    ChannelCount = t.ChannelCount,
+                    SortOrder = t.SortOrder
+                };
             }).ToList()
         });
     }
@@ -217,6 +227,8 @@ public class PlaylistTrackDto
     public int Id { get; set; }
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
+    public string? TrackName { get; set; }
+    public string? Artist { get; set; }
     public long FileSize { get; set; }
     public int ChannelCount { get; set; } = 2;
     public int SortOrder { get; set; }

@@ -1,0 +1,210 @@
+@page
+@model MusicBuddyWeb.Pages.Settings.MetadataModel
+@{
+    ViewData["Title"] = "Metadata";
+    Layout = "/Pages/Settings/_Layout.cshtml";
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-database me-2"></i>MP3 Metadata Index</h5>
+        <p class="text-muted mb-4">
+            Index song name, artist, genre, and album metadata from your MP3 files for use in the playlist manager search.
+        </p>
+
+        <div id="meta-status" class="mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status" id="meta-spinner"></div>
+                <span id="meta-status-text">Loading status...</span>
+            </div>
+        </div>
+
+        <div id="meta-progress" class="mb-4" style="display: none;">
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" id="meta-progress-bar" style="width: 0%;"></div>
+            </div>
+            <small class="text-muted" id="meta-progress-text"></small>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-primary" id="meta-refresh-btn">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh Metadata
+            </button>
+            <span id="meta-last-refresh" class="text-muted small"></span>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-disc me-2"></i>Album Catalog</h5>
+        <p class="text-muted mb-4">
+            Rebuild the album catalog used by the Albums page. This scans your MP3 folder structure to detect artists and albums.
+        </p>
+
+        <div id="catalog-status" class="mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status" id="catalog-spinner"></div>
+                <span id="catalog-status-text">Loading status...</span>
+            </div>
+        </div>
+
+        <div id="catalog-progress" class="mb-4" style="display: none;">
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" id="catalog-progress-bar" style="width: 0%;"></div>
+            </div>
+            <small class="text-muted" id="catalog-progress-text"></small>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-primary" id="catalog-refresh-btn">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh Catalog
+            </button>
+            <span id="catalog-last-refresh" class="text-muted small"></span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // --- Metadata index ---
+            var statusEl = document.getElementById('meta-status-text');
+            var spinnerEl = document.getElementById('meta-spinner');
+            var progressEl = document.getElementById('meta-progress');
+            var progressBarEl = document.getElementById('meta-progress-bar');
+            var progressTextEl = document.getElementById('meta-progress-text');
+            var refreshBtn = document.getElementById('meta-refresh-btn');
+            var lastRefreshEl = document.getElementById('meta-last-refresh');
+            var pollTimer = null;
+
+            function loadStatus() {
+                fetch('/api/metadata/status')
+                    .then(function (r) { return r.json(); })
+                    .then(function (s) {
+                        if (s.isRefreshing) {
+                            spinnerEl.style.display = '';
+                            statusEl.textContent = 'Refreshing metadata...';
+                            progressEl.style.display = '';
+                            var pct = s.totalFiles > 0 ? Math.round((s.scannedFiles / s.totalFiles) * 100) : 0;
+                            progressBarEl.style.width = pct + '%';
+                            progressTextEl.textContent = s.scannedFiles + ' / ' + s.totalFiles + ' files (' + pct + '%)';
+                            refreshBtn.disabled = true;
+                        } else {
+                            spinnerEl.style.display = 'none';
+                            statusEl.textContent = s.totalIndexed + ' tracks indexed';
+                            progressEl.style.display = 'none';
+                            refreshBtn.disabled = false;
+                            if (s.lastRefreshTime) {
+                                lastRefreshEl.textContent = 'Last refreshed: ' + new Date(s.lastRefreshTime).toLocaleString();
+                            }
+                            if (s.error) {
+                                statusEl.textContent += ' (Error: ' + s.error + ')';
+                            }
+                        }
+                    })
+                    .catch(function () {
+                        statusEl.textContent = 'Error loading status';
+                        spinnerEl.style.display = 'none';
+                    });
+            }
+
+            refreshBtn.addEventListener('click', function () {
+                fetch('/api/metadata/refresh', { method: 'POST' })
+                    .then(function () {
+                        loadStatus();
+                        startPolling();
+                    })
+                    .catch(function () {
+                        alert('Failed to start refresh');
+                    });
+            });
+
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(function () {
+                    loadStatus();
+                    fetch('/api/metadata/status')
+                        .then(function (r) { return r.json(); })
+                        .then(function (s) {
+                            if (!s.isRefreshing) {
+                                clearInterval(pollTimer);
+                                pollTimer = null;
+                            }
+                        });
+                }, 2000);
+            }
+
+            loadStatus();
+
+            // --- Album catalog ---
+            var catStatusEl = document.getElementById('catalog-status-text');
+            var catSpinnerEl = document.getElementById('catalog-spinner');
+            var catProgressEl = document.getElementById('catalog-progress');
+            var catProgressBarEl = document.getElementById('catalog-progress-bar');
+            var catProgressTextEl = document.getElementById('catalog-progress-text');
+            var catRefreshBtn = document.getElementById('catalog-refresh-btn');
+            var catLastRefreshEl = document.getElementById('catalog-last-refresh');
+            var catPollTimer = null;
+
+            function loadCatalogStatus() {
+                fetch('/api/albums/status')
+                    .then(function (r) { return r.json(); })
+                    .then(function (s) {
+                        if (s.isRefreshing) {
+                            catSpinnerEl.style.display = '';
+                            catStatusEl.textContent = 'Refreshing album catalog...';
+                            catProgressEl.style.display = '';
+                            var pct = s.totalArtists > 0 ? Math.round((s.scannedArtists / s.totalArtists) * 100) : 0;
+                            catProgressBarEl.style.width = pct + '%';
+                            catProgressTextEl.textContent = s.scannedArtists + ' / ' + s.totalArtists + ' artists (' + pct + '%)';
+                            catRefreshBtn.disabled = true;
+                        } else {
+                            catSpinnerEl.style.display = 'none';
+                            catStatusEl.textContent = s.totalAlbums + ' albums catalogued';
+                            catProgressEl.style.display = 'none';
+                            catRefreshBtn.disabled = false;
+                            if (s.lastRefreshTime) {
+                                catLastRefreshEl.textContent = 'Last refreshed: ' + new Date(s.lastRefreshTime).toLocaleString();
+                            }
+                            if (s.error) {
+                                catStatusEl.textContent += ' (Error: ' + s.error + ')';
+                            }
+                        }
+                    })
+                    .catch(function () {
+                        catStatusEl.textContent = 'Error loading status';
+                        catSpinnerEl.style.display = 'none';
+                    });
+            }
+
+            catRefreshBtn.addEventListener('click', function () {
+                fetch('/api/albums/refresh', { method: 'POST' })
+                    .then(function () {
+                        loadCatalogStatus();
+                        startCatalogPolling();
+                    })
+                    .catch(function () {
+                        alert('Failed to start catalog refresh');
+                    });
+            });
+
+            function startCatalogPolling() {
+                if (catPollTimer) clearInterval(catPollTimer);
+                catPollTimer = setInterval(function () {
+                    loadCatalogStatus();
+                    fetch('/api/albums/status')
+                        .then(function (r) { return r.json(); })
+                        .then(function (s) {
+                            if (!s.isRefreshing) {
+                                clearInterval(catPollTimer);
+                                catPollTimer = null;
+                            }
+                        });
+                }, 2000);
+            }
+
+            loadCatalogStatus();
+        })();
+    </script>
+}

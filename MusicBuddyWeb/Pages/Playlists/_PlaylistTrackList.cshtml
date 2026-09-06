@@ -27,19 +27,10 @@ else
             <span class="text-muted me-2 pe-track-num">@(i + 1).</span>
             <button type="button" class="btn btn-sm btn-link p-0 text-nowrap me-2 pe-play-btn" title="Play"
                     data-path="@t.FilePath"><i class="bi bi-play-circle"></i></button>
-            <span class="text-truncate flex-grow-1">@t.FileName</span>
-            <small class="text-nowrap text-muted ms-2">@FormatSize(t.FileSize)</small>
+            <span class="text-truncate flex-grow-1">@(t.TrackName ?? t.FileName)</span>
             <button type="button" class="btn btn-sm btn-outline-danger ms-2 pe-remove-btn" title="Remove"
                     data-track-id="@t.Id"><i class="bi bi-x-lg"></i></button>
         </div>
     }
 }
 
-@functions {
-    string FormatSize(long bytes)
-    {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
-        return $"{bytes / 1048576.0:F1} MB";
-    }
-}

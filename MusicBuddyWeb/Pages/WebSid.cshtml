@@ -92,15 +92,15 @@
                 </div>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm" id="pm-playlist-select" style="min-width: 0;"
-                            hx-get="/Playlists/PlaylistEditor?handler=PlaylistList&type=sid"
+                            hx-get="/Playlists?handler=PlaylistList&type=sid"
                             hx-trigger="load, revealed"
                             hx-swap="innerHTML"
                             hx-on::after-request="websidBridge.onPlaylistListLoaded(this)">
                         <option value="">-- All files --</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="pm-manage-btn" title="Open playlist manager">
+                    <a href="/Playlists?type=sid" class="btn btn-sm btn-outline-primary" title="Open playlist manager">
                         <i class="bi bi-pencil-square"></i>
-                    </button>
+                    </a>
                 </div>
             </div>
             <div class="list-group list-group-flush" id="websid-playlist" style="max-height: 500px; overflow-y: auto;">
@@ -131,7 +131,7 @@
         var websidBridge = (function () {
             function loadPlaylistTracks(playlistId) {
                 if (!playlistId) { websidPlayer.syncPlaylist([]); return; }
-                fetch('/Playlists/PlaylistEditor?handler=TrackList&playlistId=' + playlistId)
+                fetch('/Playlists?handler=TrackList&playlistId=' + playlistId)
                     .then(function (res) { return res.text(); })
                     .then(function (html) {
                         var parser = new DOMParser();
@@ -164,7 +164,6 @@
             websidPlayer.init([]);
 
             var select = document.getElementById('pm-playlist-select');
-            var manageBtn = document.getElementById('pm-manage-btn');
 
             select.addEventListener('change', function () {
                 var id = this.value ? parseInt(this.value) : null;
@@ -176,11 +175,6 @@
             websidPlayer.setOnTrackChanged(function (file) {
                 resumeCookie.saveResume('sid', select.value ? parseInt(select.value) : null, file.path);
             });
-
-            manageBtn.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('playlistEditorModal')).show();
-            });
         })();
     </script>
-    <partial name="Shared/_PlaylistEditorModal" />
 }

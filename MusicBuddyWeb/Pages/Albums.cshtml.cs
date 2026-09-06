@@ -208,22 +208,6 @@ public class AlbumsModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostRefreshAsync()
-    {
-        var client = _http.CreateClient("MusicBuddyAPI");
-        try
-        {
-            await client.PostAsync("/api/albums/refresh", null);
-            await client.PostAsync("/api/random/refresh", null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error refreshing catalog");
-        }
-
-        return await OnGetArtistGridAsync();
-    }
-
     private string? BuildRandomParams(string? artist, string? genre)
     {
         var parts = new List<string>();

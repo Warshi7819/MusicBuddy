@@ -38,6 +38,12 @@
         </li>
     }
     <li class="nav-item">
+        <a class="nav-link @(currentPage == "/Settings/Metadata" ? "active" : "")"
+           asp-page="/Settings/Metadata">
+            <i class="bi bi-database"></i> Metadata
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link @(currentPage == "/Settings/Credits" ? "active" : "")"
            asp-page="/Settings/Credits">
             <i class="bi bi-heart"></i> Credits
