@@ -92,7 +92,8 @@ public class AlbumsModel : PageModel
                 {
                     Name = f.Name,
                     Path = f.Path,
-                    DurationSeconds = 0
+                    DurationSeconds = 0,
+                    ChannelCount = f.ChannelCount > 0 ? f.ChannelCount : 2
                 }).ToList()
             });
         }
@@ -144,7 +145,7 @@ public class AlbumsModel : PageModel
             if (string.IsNullOrEmpty(result.AlbumPath))
             {
                 var files = await BrowseRootAsync();
-                var tracks = files?.Select(f => new TrackInfo { Name = f.Name, Path = f.Path, DurationSeconds = 0 }).ToList() ?? new();
+                var tracks = files?.Select(f => new TrackInfo { Name = f.Name, Path = f.Path, DurationSeconds = 0, ChannelCount = f.ChannelCount > 0 ? f.ChannelCount : 2 }).ToList() ?? new();
                 return Partial("Albums/_TrackView", new TrackViewModel
                 {
                     Artist = artistData ?? new ArtistDto { Name = result.ArtistName, Path = result.ArtistName, IsUncatalogued = true },
@@ -373,6 +374,7 @@ public class TrackInfo
     public int DurationSeconds { get; set; }
     public string? Title { get; set; }
     public string? Artist { get; set; }
+    public int ChannelCount { get; set; } = 2;
 
     public string DisplayTitle => string.IsNullOrEmpty(Title) ? Name : Title;
     public string DisplayDuration => DurationSeconds <= 0 ? "--:--" :

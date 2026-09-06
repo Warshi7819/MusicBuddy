@@ -16,6 +16,12 @@ var albumPlayer = (function () {
     var playing = false;
     var audioCtx = null;
     var volumeGain = null;
+    var analyserL = null;
+    var analyserR = null;
+    var rmsDataL = null;
+    var rmsDataR = null;
+    var splitter = null;
+    var vuInterval = null;
     var tickInterval = null;
     var onTrackEnded = null;
     var _randomParams = null;
@@ -68,6 +74,15 @@ var albumPlayer = (function () {
     function ensureAudioContext() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyserL = audioCtx.createAnalyser();
+            analyserR = audioCtx.createAnalyser();
+            analyserL.fftSize = 2048;
+            analyserR.fftSize = 2048;
+            rmsDataL = new Float32Array(analyserL.frequencyBinCount);
+            rmsDataR = new Float32Array(analyserR.frequencyBinCount);
+            splitter = audioCtx.createChannelSplitter(2);
+            splitter.connect(analyserL, 0);
+            splitter.connect(analyserR, 1);
             volumeGain = audioCtx.createGain();
             volumeGain.gain.value = 0.8;
             volumeGain.connect(audioCtx.destination);
@@ -85,7 +100,9 @@ var albumPlayer = (function () {
             title: track.title || track.displayTitle || track.name,
             artist: track.artist || '',
             duration: track.durationSeconds,
+            channelCount: track.channelCount || 2,
             audio: new Audio(),
+            mediaSource: null,
             buffer: null,
             source: null,
             gainNode: null,
@@ -99,7 +116,6 @@ var albumPlayer = (function () {
         };
 
         ts.audio.preload = 'auto';
-        ts.audio.volume = volumeGain ? volumeGain.gain.value : 1;
         ts.audio.addEventListener('canplaythrough', function () {
             if (ts.loadedHTML5) return;
             ts.loadedHTML5 = true;
@@ -111,6 +127,13 @@ var albumPlayer = (function () {
         ts.audio.addEventListener('error', function () {});
 
         return ts;
+    }
+
+    function ensureMediaSource(ts) {
+        if (ts.mediaSource || !audioCtx) return;
+        ts.mediaSource = audioCtx.createMediaElementSource(ts.audio);
+        ts.mediaSource.connect(volumeGain);
+        if (splitter) ts.mediaSource.connect(splitter);
     }
 
     function startWebAudioDecode(ts) {
@@ -144,8 +167,10 @@ var albumPlayer = (function () {
         ts.gainNode.gain.value = 1;
         ts.source = ctx.createBufferSource();
         ts.source.buffer = ts.buffer;
+        ts.source.channelCount = 2;
         ts.source.connect(ts.gainNode);
         ts.gainNode.connect(volumeGain);
+        if (splitter) ts.gainNode.connect(splitter);
 
         ts.source.start(0, pos);
         ts.position = pos * 1000;
@@ -199,12 +224,15 @@ var albumPlayer = (function () {
             ts.gainNode.gain.value = 1;
             ts.source = ctx.createBufferSource();
             ts.source.buffer = ts.buffer;
+            ts.source.channelCount = 2;
             ts.source.connect(ts.gainNode);
             ts.gainNode.connect(volumeGain);
+            if (splitter) ts.gainNode.connect(splitter);
             var startOffset = ts.position / 1000;
             ts.source.start(0, startOffset);
             restartEndedTimer(ts);
         } else if (ts.loadedHTML5) {
+            ensureMediaSource(ts);
             ts.audio.currentTime = ts.position / 1000;
             ts.audio.play().then(function () {
                 if (ts.state === 'playing') {
@@ -218,6 +246,7 @@ var albumPlayer = (function () {
                 if (ts.state === 'loading') {
                     ts.state = 'playing';
                     ts.lastTick = performance.now();
+                    ensureMediaSource(ts);
                     ts.audio.currentTime = ts.position / 1000;
                     ts.audio.play().then(function () {
                         if (ts.state === 'playing') {
@@ -264,6 +293,42 @@ var albumPlayer = (function () {
             document.getElementById('alb-time').textContent = formatTime(ts.position / 1000);
             var pct = ts.endpos ? (ts.position / ts.endpos * 100) : 0;
             document.getElementById('alb-seek-fill').style.width = pct + '%';
+        }
+    }
+
+    function getRmsLevel(channel) {
+        var a = channel === 0 ? analyserL : analyserR;
+        var d = channel === 0 ? rmsDataL : rmsDataR;
+        if (!a) return 0;
+        a.getFloatTimeDomainData(d);
+        var sum = 0;
+        for (var i = 0; i < d.length; i++) sum += d[i] * d[i];
+        var rms = Math.sqrt(sum / d.length);
+        return Math.min(1, rms);
+    }
+
+    function startVu() {
+        if (vuInterval) return;
+        vuInterval = setInterval(function () {
+            if (typeof vuMeter === 'undefined') return;
+            var ts = sources[currentIndex];
+            if (playing && ts && ts.state === 'playing') {
+                var leftLevel = getRmsLevel(0);
+                var mono = ts.channelCount === 1;
+                vuMeter.setLevels(leftLevel, mono ? leftLevel : getRmsLevel(1));
+            } else {
+                vuMeter.setLevels(0, 0);
+            }
+        }, 16);
+    }
+
+    function stopVu() {
+        if (vuInterval) {
+            clearInterval(vuInterval);
+            vuInterval = null;
+        }
+        if (typeof vuMeter !== 'undefined') {
+            vuMeter.setLevels(0, 0);
         }
     }
 
@@ -388,10 +453,6 @@ var albumPlayer = (function () {
     controlScope.addEventListener('input', function (e) {
         if (e.target && e.target.id === 'alb-volume' && volumeGain) {
             volumeGain.gain.value = e.target.value / 100;
-            var v = e.target.value / 100;
-            for (var i = 0; i < sources.length; i++) {
-                if (sources[i].audio) sources[i].audio.volume = v;
-            }
         }
     }, true);
 
@@ -421,6 +482,7 @@ var albumPlayer = (function () {
 
             if (tickInterval) clearInterval(tickInterval);
             tickInterval = setInterval(tick, 16);
+            startVu();
 
             var volEl = document.getElementById('alb-volume');
             if (volEl && volumeGain) volEl.value = Math.round(volumeGain.gain.value * 100);
@@ -448,6 +510,10 @@ var albumPlayer = (function () {
             }
             playing = false;
             currentIndex = -1;
+            if (typeof vuMeter !== 'undefined') {
+                vuMeter.setLevels(0, 0);
+                vuMeter.destroy();
+            }
             showPauseState();
             highlightTrack(-1);
             var nowTitle = document.getElementById('alb-now-title');
@@ -464,11 +530,17 @@ var albumPlayer = (function () {
             this.stop();
             clearInterval(tickInterval);
             tickInterval = null;
+            stopVu();
             if (audioCtx && audioCtx.state !== 'closed') {
                 audioCtx.close().catch(function () {});
             }
             audioCtx = null;
             volumeGain = null;
+            analyserL = null;
+            analyserR = null;
+            rmsDataL = null;
+            rmsDataR = null;
+            splitter = null;
         },
 
         isInitialized: function () {
@@ -548,6 +620,12 @@ function setArtistArt(btn) {
         var trackListEl = document.getElementById('track-list');
         if (!trackListEl) return;
 
+        var canvasEl = document.getElementById('alb-vu-canvas');
+        if (canvasEl && typeof vuMeter !== 'undefined') {
+            vuMeter.destroy();
+            vuMeter.init('alb-vu-canvas', document.body.getAttribute('data-vu-style') || 'classic');
+        }
+
         var tracks;
         try {
             tracks = JSON.parse(trackListEl.dataset.tracks || '[]');
@@ -582,4 +660,6 @@ function setArtistArt(btn) {
             }
         });
     }
+
+    initPlayerFromTrackView();
 })();
