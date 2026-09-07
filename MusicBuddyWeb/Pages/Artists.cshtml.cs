@@ -4,39 +4,32 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MusicBuddyWeb.Pages;
 
-public class AlbumsModel : PageModel
+public class ArtistsModel : PageModel
 {
     private readonly IHttpClientFactory _http;
-    private readonly ILogger<AlbumsModel> _logger;
+    private readonly ILogger<ArtistsModel> _logger;
 
-    public AlbumsModel(IHttpClientFactory http, ILogger<AlbumsModel> logger)
+    public ArtistsModel(IHttpClientFactory http, ILogger<ArtistsModel> logger)
     {
         _http = http;
         _logger = logger;
     }
 
-    public ArtistDto? Artist { get; set; }
-    public Dictionary<string, string> ArtistArtMap { get; set; } = new();
-
-    public async Task<IActionResult> OnGet(string? artist, string? album)
+    public void OnGet()
     {
-        if (artist is not null && album is not null)
-        {
-            return Redirect($"/AlbumPlayer?artist={Uri.EscapeDataString(artist)}&album={Uri.EscapeDataString(album)}");
-        }
+    }
 
-        if (artist is null)
-        {
-            return RedirectToPage("/Artists");
-        }
-
+    public async Task<IActionResult> OnGetArtistGridAsync()
+    {
         var catalog = await GetCatalogAsync();
-        if (catalog is null) return Page();
+        if (catalog is null) return Partial("Albums/_ArtistGrid", new ArtistGridModel { Artists = new() });
 
-        Artist = catalog.Artists.FirstOrDefault(a => a.Name == artist);
-        ArtistArtMap = await GetArtistArtMapAsync();
-
-        return Page();
+        var artMap = await GetArtistArtMapAsync();
+        return Partial("Albums/_ArtistGrid", new ArtistGridModel
+        {
+            Artists = catalog.Artists,
+            ArtistArtMap = artMap
+        });
     }
 
     private async Task<CatalogData?> GetCatalogAsync()
@@ -65,4 +58,10 @@ public class AlbumsModel : PageModel
             return new();
         }
     }
+}
+
+public class ArtistGridModel
+{
+    public List<ArtistDto> Artists { get; set; } = new();
+    public Dictionary<string, string> ArtistArtMap { get; set; } = new();
 }
