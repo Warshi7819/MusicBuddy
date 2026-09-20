@@ -103,16 +103,12 @@ var albumPlayer = (function () {
             channelCount: track.channelCount || 2,
             audio: new Audio(),
             mediaSource: null,
-            buffer: null,
-            source: null,
-            gainNode: null,
             state: 'none',
             position: 0,
             endpos: (track.durationSeconds || 0) * 1000,
             lastTick: 0,
             endedTimer: null,
-            loadedHTML5: false,
-            loadedWebAudio: false
+            loadedHTML5: false
         };
 
         ts.audio.preload = 'auto';
@@ -136,48 +132,6 @@ var albumPlayer = (function () {
         if (splitter) ts.mediaSource.connect(splitter);
     }
 
-    function startWebAudioDecode(ts) {
-        if (ts.loadedWebAudio || ts.state === 'none') return;
-        var ctx = ensureAudioContext();
-        fetch(encodeFilePath(ts.path))
-            .then(function (r) { return r.arrayBuffer(); })
-            .then(function (data) {
-                return ctx.decodeAudioData(data);
-            })
-            .then(function (buf) {
-                if (ts.state === 'none') return;
-                ts.buffer = buf;
-                ts.loadedWebAudio = true;
-                ts.endpos = buf.duration * 1000;
-                refreshDurationDisplay(ts);
-                if (ts.state === 'playing' && !ts.source) {
-                    switchToWebAudio(ts);
-                }
-            })
-            .catch(function () {});
-    }
-
-    function switchToWebAudio(ts) {
-        if (!ts.buffer || ts.source !== null) return;
-        var ctx = ensureAudioContext();
-        var pos = ts.audio.currentTime || 0;
-        ts.audio.pause();
-
-        ts.gainNode = ctx.createGain();
-        ts.gainNode.gain.value = 1;
-        ts.source = ctx.createBufferSource();
-        ts.source.buffer = ts.buffer;
-        ts.source.channelCount = 2;
-        ts.source.connect(ts.gainNode);
-        ts.gainNode.connect(volumeGain);
-        if (splitter) ts.gainNode.connect(splitter);
-
-        ts.source.start(0, pos);
-        ts.position = pos * 1000;
-        ts.lastTick = performance.now();
-        restartEndedTimer(ts);
-    }
-
     function restartEndedTimer(ts) {
         if (ts.endedTimer) {
             clearTimeout(ts.endedTimer);
@@ -196,15 +150,6 @@ var albumPlayer = (function () {
             clearTimeout(ts.endedTimer);
             ts.endedTimer = null;
         }
-        if (ts.source) {
-            try { ts.source.stop(); } catch (e) {}
-            ts.source.disconnect();
-            ts.source = null;
-        }
-        if (ts.gainNode) {
-            ts.gainNode.disconnect();
-            ts.gainNode = null;
-        }
         ts.audio.pause();
         if (resetPosition) {
             ts.position = 0;
@@ -215,23 +160,11 @@ var albumPlayer = (function () {
 
     function playTrackSource(ts) {
         if (ts.state === 'playing') return;
-        var ctx = ensureAudioContext();
+        ensureAudioContext();
         ts.state = 'playing';
         ts.lastTick = performance.now();
 
-        if (ts.buffer) {
-            ts.gainNode = ctx.createGain();
-            ts.gainNode.gain.value = 1;
-            ts.source = ctx.createBufferSource();
-            ts.source.buffer = ts.buffer;
-            ts.source.channelCount = 2;
-            ts.source.connect(ts.gainNode);
-            ts.gainNode.connect(volumeGain);
-            if (splitter) ts.gainNode.connect(splitter);
-            var startOffset = ts.position / 1000;
-            ts.source.start(0, startOffset);
-            restartEndedTimer(ts);
-        } else if (ts.loadedHTML5) {
+        if (ts.loadedHTML5) {
             ensureMediaSource(ts);
             ts.audio.currentTime = ts.position / 1000;
             ts.audio.play().then(function () {
@@ -268,7 +201,6 @@ var albumPlayer = (function () {
         ts.state = 'loading';
         ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
-        startWebAudioDecode(ts);
     }
 
     function preloadTrack(index) {
@@ -278,7 +210,6 @@ var albumPlayer = (function () {
         ts.state = 'loading';
         ts.audio.src = encodeFilePath(ts.path);
         ts.audio.load();
-        startWebAudioDecode(ts);
     }
 
     function tick() {
@@ -500,9 +431,7 @@ var albumPlayer = (function () {
             for (var i = 0; i < sources.length; i++) {
                 sources[i].state = 'none';
                 sources[i].audio.src = '';
-                sources[i].buffer = null;
                 sources[i].loadedHTML5 = false;
-                sources[i].loadedWebAudio = false;
             }
             playing = false;
             currentIndex = -1;
