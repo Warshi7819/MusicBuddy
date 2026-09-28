@@ -2,6 +2,31 @@
 
 MusicBuddy is a self-hosted, multi-user music player and library manager for local music collections. It plays MP3 files and Commodore 64 SID music in the browser, organizes them into browsable artist/album catalogs, manages playlists, and includes a CD barcode scanner that can look up album metadata via online databases - a must while thrifting old CD's.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="ScreenShots/MP3 Player Page.png" alt="MP3 Player" /><br/>
+      <b>MP3 Player</b> — Browser-based playback with album art, VU meters, and SID engine selection
+    </td>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Album Player.png" alt="Album Player" /><br/>
+      <b>Album Player</b> — Dedicated album playback with track listing and random play modes
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Playlist.png" alt="Playlist Manager" /><br/>
+      <b>Playlist Manager</b> — Drag-and-drop playlist editor with library browser and search
+    </td>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Scan.png" alt="CD Barcode Scanner" /><br/>
+      <b>CD Barcode Scanner</b> — Camera-based barcode scanning with online album lookup
+    </td>
+  </tr>
+</table>
+
 ## Features
 
 - **MP3 & SID Player** — Browser-based playback with gapless transitions. Two SID engines (jsSID and WebSid) with SID chip model selection and subtune support.
