@@ -1,6 +1,6 @@
 # MusicBuddy
 
-MusicBuddy is a self-hosted, multi-user music player and library manager for local music collections. It plays MP3 files and Commodore 64 SID music in the browser, organizes them into browsable artist/album catalogs, manages playlists, and includes a CD barcode scanner that can look up album metadata via online databases - a must while thrifting old CD's.
+MusicBuddy is a self-hosted, multi-user music player and library manager for your local music collection! The one you ripped back in 2003 that is. It plays MP3 files (and Commodore 64 SID music) in the browser, organizes them into browsable artist/album catalogs, manages playlists, and includes a CD barcode scanner that can look up album metadata via online databases. The latter is a must while thrifting old CD's! All the features, with zero fluff!
 
 ## Screenshots
 
