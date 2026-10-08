@@ -1,10 +1,14 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
+using MusicBuddyShared.Dtos;
 using MusicBuddyWeb;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +86,20 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+
+// Music files require an authenticated session (the app is exposed to the internet).
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/Music") &&
+        context.User?.Identity?.IsAuthenticated != true)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+    await next();
+});
+
 var provider = new FileExtensionContentTypeProvider();
 provider.Mappings[".sid"] = "application/octet-stream";
 app.UseStaticFiles(new StaticFileOptions
@@ -89,9 +107,54 @@ app.UseStaticFiles(new StaticFileOptions
     ContentTypeProvider = provider
 });
 app.UseRouting();
-app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+
+// Session endpoints for API clients (e.g. the Android Auto app). The Razor Login page
+// remains the browser flow; both issue the same DataProtection-protected cookie.
+app.MapPost("/api/session", async (HttpContext context, IHttpClientFactory factory, LoginRequest request) =>
+{
+    var client = factory.CreateClient("MusicBuddyAPI");
+    var response = await client.PostAsJsonAsync("/api/auth/login", request);
+
+    if (response.StatusCode == HttpStatusCode.Unauthorized)
+        return Results.Json(new { message = "Invalid username or password" }, statusCode: StatusCodes.Status401Unauthorized);
+    if (response.StatusCode == HttpStatusCode.Forbidden)
+        return Results.Json(new { message = "This account has been disabled" }, statusCode: StatusCodes.Status403Forbidden);
+    if (!response.IsSuccessStatusCode)
+        return Results.Json(new { message = "Login failed. Please try again." }, statusCode: StatusCodes.Status502BadGateway);
+
+    var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+    if (result is null)
+        return Results.Json(new { message = "Login failed. Please try again." }, statusCode: StatusCodes.Status502BadGateway);
+
+    var claims = new List<Claim>
+    {
+        new(ClaimTypes.NameIdentifier, result.Id.ToString()),
+        new(ClaimTypes.Name, result.Username)
+    };
+    if (!string.IsNullOrEmpty(result.Alias))
+    {
+        claims.Add(new Claim("Alias", result.Alias));
+    }
+    if (result.IsAdmin)
+    {
+        claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+    }
+
+    var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+        new ClaimsPrincipal(identity));
+
+    return Results.Json(result);
+}).RequireRateLimiting("LoginPolicy");
+
+app.MapDelete("/api/session", async (HttpContext context) =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.NoContent();
+});
+
 app.MapRazorPages();
 
 var apiBase = builder.Configuration["Api:BaseUrl"] ?? "http://localhost:5277";
