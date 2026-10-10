@@ -15,6 +15,7 @@ public sealed class MusicBuddyClient : IDisposable
 {
     private readonly HttpClientHandler _handler;
     private readonly HttpClient _http;
+    private readonly SemaphoreSlim _loginLock = new(1, 1);
 
     public string BaseUrl { get; private set; } = string.Empty;
     public string Username { get; private set; }
@@ -27,7 +28,11 @@ public sealed class MusicBuddyClient : IDisposable
         {
             UseCookies = true,
             CookieContainer = new CookieContainer(),
-            AutomaticDecompression = DecompressionMethods.All
+            AutomaticDecompression = DecompressionMethods.All,
+            // The API answers unauthenticated requests with a 302 to the web
+            // login page; following it turns into a 200 HTML response that
+            // explodes in the JSON deserializer. Handle 3xx ourselves instead.
+            AllowAutoRedirect = false
         };
         _http = new HttpClient(_handler) { Timeout = TimeSpan.FromSeconds(30) };
     }
@@ -50,23 +55,31 @@ public sealed class MusicBuddyClient : IDisposable
         if (string.IsNullOrEmpty(BaseUrl) || string.IsNullOrEmpty(Username))
             throw new InvalidOperationException("Client is not configured");
 
-        _handler.CookieContainer = new CookieContainer();
+        await _loginLock.WaitAsync(ct);
+        try
+        {
+            _handler.CookieContainer = new CookieContainer();
 
-        var payload = JsonSerializer.Serialize(new LoginRequest { Username = Username, Password = Password }, Json.Options);
-        using var content = new StringContent(payload, Encoding.UTF8);
-        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-        using var response = await _http.PostAsync($"{BaseUrl}/api/session", content, ct);
+            var payload = JsonSerializer.Serialize(new LoginRequest { Username = Username, Password = Password }, Json.Options);
+            using var content = new StringContent(payload, Encoding.UTF8);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            using var response = await _http.PostAsync($"{BaseUrl}/api/session", content, ct);
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new MusicBuddyAuthException("Invalid username or password");
-        if (response.StatusCode == HttpStatusCode.Forbidden)
-            throw new MusicBuddyAuthException("This account is disabled");
-        response.EnsureSuccessStatusCode();
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new MusicBuddyAuthException("Invalid username or password");
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new MusicBuddyAuthException("This account is disabled");
+            response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(Json.Options, ct)
-                     ?? throw new MusicBuddyAuthException("Login failed");
-        UpdateCookieHeader();
-        return result;
+            var result = await response.Content.ReadFromJsonAsync<LoginResponse>(Json.Options, ct)
+                         ?? throw new MusicBuddyAuthException("Login failed");
+            UpdateCookieHeader();
+            return result;
+        }
+        finally
+        {
+            _loginLock.Release();
+        }
     }
 
     public async Task SignOutAsync(CancellationToken ct = default)
@@ -89,12 +102,20 @@ public sealed class MusicBuddyClient : IDisposable
         for (var attempt = 0; attempt < 2; attempt++)
         {
             using var response = await _http.GetAsync(BaseUrl + path, ct);
-            if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+            if ((response.StatusCode == HttpStatusCode.Unauthorized || IsRedirect(response.StatusCode)) && attempt == 0)
             {
                 await LoginAsync(ct);
                 continue;
             }
             response.EnsureSuccessStatusCode();
+
+            // Guard against proxies that answer 2xx with an HTML error/login
+            // page - the JSON deserializer's stack trace for that is useless.
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
+            if (mediaType != null && !mediaType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"Expected JSON from {path} but got {mediaType} (HTTP {(int)response.StatusCode})");
+
             return await response.Content.ReadFromJsonAsync<T>(Json.Options, ct)
                    ?? throw new InvalidOperationException($"Empty response from {path}");
         }
@@ -112,7 +133,7 @@ public sealed class MusicBuddyClient : IDisposable
         for (var attempt = 0; attempt < 2; attempt++)
         {
             using var response = await _http.GetAsync(url, ct);
-            if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+            if ((response.StatusCode == HttpStatusCode.Unauthorized || IsRedirect(response.StatusCode)) && attempt == 0)
             {
                 await LoginAsync(ct);
                 continue;
@@ -122,6 +143,9 @@ public sealed class MusicBuddyClient : IDisposable
         }
         throw new InvalidOperationException($"Request failed after re-auth: {url}");
     }
+
+    private static bool IsRedirect(HttpStatusCode status)
+        => (int)status is >= 300 and < 400;
 
     public string ToAbsoluteUrl(string pathAndQuery)
     {
