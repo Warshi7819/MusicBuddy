@@ -1,14 +1,11 @@
 # MusicBuddy for Android Auto
 
 A sideloadable Android app that lets you browse and play your MusicBuddy library on an
-Android Auto head unit. The phone stays in your pocket — the car screen is the UI.
+Android Auto head unit. The phone stays in your pocket — the car screen is the UI!
 
-- **Browse**: Artists → artist → album → tracks (via the existing `/api/albums` endpoints)
+- **Browse**: Artists → artist → album → tracks
 - **Random Album**: a **"Roll the dice!"** button that shows five random albums
-  from your library — no autoplay; tap an album to see its tracks, then tap a
-  track to play the whole album from that track. Tap "Roll the dice!" any time
-  for five fresh suggestions (each roll mints a new generation id, which is the
-  only thing Android Auto's browse cache reliably bypasses)
+  from your library
 - **Playback**: streams MP3s from your MusicBuddy server with ExoPlayer; album art,
   steering-wheel controls, and audio focus (ducks/pauses for nav prompts and calls)
   come from the MediaSession
