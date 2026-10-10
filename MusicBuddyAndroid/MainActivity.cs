@@ -37,6 +37,10 @@ public class MainActivity : Activity
             LayoutParameters = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent)
         };
         root.SetPadding(padding, padding, padding, padding);
+        // Edge-to-edge: Android draws behind the status/navigation bars, so add
+        // their insets to the content padding - otherwise the title and first
+        // lines hide under the status bar.
+        AndroidX.Core.View.ViewCompat.SetOnApplyWindowInsetsListener(root, new InsetsAdder(padding));
 
         var title = new TextView(this)
         {
@@ -190,5 +194,20 @@ public class MainActivity : Activity
         // Kill any stale unauthenticated session; Android Auto rebinds (and re-runs OnCreate)
         // the next time the app is opened on the car display.
         StopService(new Intent(this, typeof(MusicBuddyMediaService)));
+    }
+
+    private sealed class InsetsAdder : Java.Lang.Object, AndroidX.Core.View.IOnApplyWindowInsetsListener
+    {
+        private readonly int _padding;
+
+        public InsetsAdder(int padding) => _padding = padding;
+
+        public AndroidX.Core.View.WindowInsetsCompat OnApplyWindowInsets(
+            Android.Views.View v, AndroidX.Core.View.WindowInsetsCompat insets)
+        {
+            var bars = insets.GetInsets(AndroidX.Core.View.WindowInsetsCompat.Type.SystemBars());
+            v.SetPadding(_padding, _padding + bars.Top, _padding, _padding + bars.Bottom);
+            return insets;
+        }
     }
 }
