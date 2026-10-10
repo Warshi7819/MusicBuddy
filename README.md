@@ -39,18 +39,20 @@ MusicBuddy is a self-hosted, multi-user music player and library manager for you
 - **Multi-User** — Role-based access (Admin and regular users), account management, password change, and user aliases.
 - **Track Metadata Index** — Background indexing of MP3 metadata into a SQLite database, powering multi-field search with pagination and sorting.
 - **Session Resume** — Remembers the last-playing playlist and track across page reloads.
+- Optional: **Android Auto** — Sideloadable Android app that brings your library to the car: browse artists and albums, tap any track to queue the whole album, and shake up the drive with the "Roll the dice!" random-album picker. See the [MusicBuddyAndroid](MusicBuddyAndroid/README.md) project for build, sideload, and car-setup instructions.
 
 ## Architecture
 
-MusicBuddy is built as a three-project .NET solution:
+MusicBuddy is built as a four-project .NET solution:
 
 ```
 MusicBuddyWeb/      ASP.NET Core Razor Pages front-end
 MusicBuddyAPI/      ASP.NET Core Web API back-end
 MusicBuddyShared/   Shared class library (models and DTOs)
+MusicBuddyAndroid/  Sideloadable Android Auto client (.NET for Android + Media3)
 ```
 
-**Stack:** ASP.NET Core 10.0, SQLite via Entity Framework Core, Bootstrap 5, htmx, jQuery.
+**Stack:** ASP.NET Core 10.0, SQLite via Entity Framework Core, Bootstrap 5, htmx, jQuery. Optional: .NET for Android + AndroidX Media3.
 
 **Data flow:**
 
@@ -67,6 +69,8 @@ Browser --> MusicBuddyWeb (Razor Pages + API Proxy)
 ```
 
 Music files live on the local filesystem and are served as static files. The web project proxies all API requests to the back-end, forwarding authentication cookies. SQLite stores users, playlists, themes, settings, and the track metadata index. The database is auto-migrated on startup.
+
+The optional Android app ([MusicBuddyAndroid](MusicBuddyAndroid/README.md)) connects directly to the same server: it logs in through `POST /api/session`, browses via the proxied API, and streams MP3s with cookie-authenticated ExoPlayer playback — everything Android Auto-specific (browse tree, queueing, the random picker) is documented in its project README.
 
 **External integrations:**
 
