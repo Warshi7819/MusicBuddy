@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android36.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>MusicBuddyAndroid</RootNamespace>
+    <ApplicationId>com.musicbuddy.android</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AndroidResourcePrefix>Resources</AndroidResourcePrefix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Xamarin.AndroidX.Media3.Common" Version="1.10.1.1" />
+    <PackageReference Include="Xamarin.AndroidX.Media3.DataSource" Version="1.10.1.1" />
+    <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" Version="1.10.1.1" />
+    <PackageReference Include="Xamarin.AndroidX.Media3.Session" Version="1.10.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MusicBuddyShared\MusicBuddyShared.csproj" />
+  </ItemGroup>
+
+</Project>
