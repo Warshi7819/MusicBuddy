@@ -10,6 +10,31 @@ Android Auto head unit. The phone stays in your pocket — the car screen is the
   steering-wheel controls, and audio focus (ducks/pauses for nav prompts and calls)
   come from the MediaSession
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="ScreenShots/MainMenu.png" alt="Main menu" /><br/>
+      <b>Browse</b> — Artists and Random Album tabs with your full artist list
+    </td>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Artist Overview.png" alt="Artist overview" /><br/>
+      <b>Artist</b> — that artist's albums with cover art
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Album Overview.png" alt="Album overview" /><br/>
+      <b>Album</b> — full track list; tap any track to queue the whole album
+    </td>
+    <td align="center" width="50%">
+      <img src="ScreenShots/Playing.png" alt="Now playing" /><br/>
+      <b>Now Playing</b> — album art, seek bar, transport controls, and the queue
+    </td>
+  </tr>
+</table>
+
 ## How it works
 
 ```
